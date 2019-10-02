@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package>
+
+    <name>iris_lama_ros</name>
+    <version>1.0.0</version>
+    <description>
+        ROS package of IRIS Localization and Mapping (LaMa).
+    </description>
+
+    <author     email="efp@ua.pt">Eurico Pedrosa</author>
+    <maintainer email="efp@ua.pt">Eurico Pedrosa</maintainer>
+
+    <license>BSD</license>
+
+    <buildtool_depend>catkin</buildtool_depend>
+
+    <build_depend>iris_lama</build_depend>
+
+    <export />
+
+</package>
