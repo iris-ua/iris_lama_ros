@@ -67,8 +67,6 @@ public:
     void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
     bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
 
-    void fromBag(const std::string bag_file);
-
 private:
     bool OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
     bool DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);

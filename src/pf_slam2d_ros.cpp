@@ -452,80 +452,14 @@ bool lama::PFSlam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMa
     return true;
 }
 
-void lama::PFSlam2DROS::fromBag(const std::string bag_file)
-{
-    rosbag::Bag bag;
-    bag.open(bag_file, rosbag::bagmode::Read);
-
-    // All LaserScan messages will be published in the /scan topic
-    ros::Publisher scan_pub = nh_.advertise<sensor_msgs::LaserScan>("/scan", 5);
-    rosbag::View viewall(bag);
-
-    // Store up to 5 messages and there error message (if they cannot be processed right away)
-    std::queue<std::pair<sensor_msgs::LaserScan::ConstPtr, std::string> > s_queue;
-    foreach(rosbag::MessageInstance const m, viewall)
-    {
-        if (not ros::ok()) return;
-
-        tf::tfMessage::ConstPtr cur_tf = m.instantiate<tf::tfMessage>();
-        if (cur_tf != NULL) {
-            for (size_t i = 0; i < cur_tf->transforms.size(); ++i)
-            {
-                geometry_msgs::TransformStamped transformStamped;
-                tf::StampedTransform stampedTf;
-                transformStamped = cur_tf->transforms[i];
-                tf::transformStampedMsgToTF(transformStamped, stampedTf);
-                tf_->setTransform(stampedTf);
-            }
-        }
-
-        sensor_msgs::LaserScan::ConstPtr s = m.instantiate<sensor_msgs::LaserScan>();
-        if (s != NULL) {
-            if (!(ros::Time(s->header.stamp)).is_zero())
-            {
-                s_queue.push(std::make_pair(s, ""));
-            }
-            // Just like in live processing, only process the latest 5 scans
-            if (s_queue.size() > 5) {
-                ROS_WARN_STREAM("Dropping old scan: " << s_queue.front().second);
-                s_queue.pop();
-            }
-            // ignoring un-timestamped tf data
-        }
-
-        // Only process a scan if it has tf data
-        while (!s_queue.empty())
-        {
-            try
-            {
-                tf::StampedTransform t;
-                tf_->lookupTransform(s_queue.front().first->header.frame_id, odom_frame_id_, s_queue.front().first->header.stamp, t);
-                scan_pub.publish(s_queue.front().first);
-                this->onLaserScan(s_queue.front().first);
-                s_queue.pop();
-            }
-            // If tf does not have the data yet
-            catch(tf2::TransformException& e)
-            {
-                // Store the error to display it if we cannot process the data after some time
-                s_queue.front().second = std::string(e.what());
-                break;
-            }
-        }
-    }
-
-    bag.close();
-}
+void MainRun();
 
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "pf_slam2d_ros");
     lama::PFSlam2DROS slam2d_ros;
 
-    if (argc > 1)
-        slam2d_ros.fromBag( argv[1] );
-    else
-        ros::spin();
+    MainRun();
 
     return 0;
 }
