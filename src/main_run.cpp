@@ -42,7 +42,7 @@ void MainRun()
 
     auto pub_scan  = pnh.advertise<sensor_msgs::LaserScan>(scan_topic,10);
     auto pub_tf  = pnh.advertise<tf2_msgs::TFMessage>("/tf",10);
-    auto pub_tf_static  = pnh.advertise<tf2_msgs::TFMessage>("/tf_static",10);
+    auto pub_tf_static  = pnh.advertise<tf2_msgs::TFMessage>("/tf_static",10, true);
     auto pub_clock = pnh.advertise<rosgraph_msgs::Clock>("/clock",10);
 
     rosbag::View view(bag, rosbag::TopicQuery(topics));
