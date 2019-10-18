@@ -15,6 +15,7 @@
     <buildtool_depend>catkin</buildtool_depend>
 
     <build_depend>iris_lama</build_depend>
+    <build_depend>rosbag_storage</build_depend>
 
     <export />
 

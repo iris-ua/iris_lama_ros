@@ -34,6 +34,11 @@
 #include <lama/image.h>
 
 #include "lama/ros/slam2d_ros.h"
+#include <rosbag/bag.h>
+#include <rosbag/view.h>
+#include <tf2_msgs/TFMessage.h>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#include <rosgraph_msgs/Clock.h>
 
 
 lama::Slam2DROS::Slam2DROS()
@@ -69,7 +74,7 @@ lama::Slam2DROS::Slam2DROS()
     pnh_.param("cache_size", itmp, 100); options.cache_size = itmp;
 
     pnh_.param("map_publish_period", tmp, 5.0 );
-    map_publish_period_ = ros::WallDuration(tmp);
+    map_publish_period_ = ros::Duration(tmp);
 
     slam2d_ = new Slam2D(options);
     slam2d_->setPose(prior);
@@ -204,7 +209,7 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
 
-    ros::WallTime now = ros::WallTime::now();
+    ros::Time now = ros::Time::now();
     if ( (map_publish_period_.toSec() > 0.0f ) &&
         (now - map_publish_last_time_) >= map_publish_period_ )
     {
@@ -213,7 +218,7 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
             ros_occ_.header.stamp = laser_scan->header.stamp;
             map_pub_.publish(ros_occ_);
 
-            map_publish_last_time_ = ros::WallTime::now();
+            map_publish_last_time_ = ros::Time::now();
         }
 
         if (dist_pub_.getNumSubscribers() > 0){
@@ -221,7 +226,7 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
             ros_cost_.header.stamp = laser_scan->header.stamp;
             dist_pub_.publish(ros_cost_);
 
-            map_publish_last_time_ = ros::WallTime::now();
+            map_publish_last_time_ = ros::Time::now();
         }
     }// endif
 
@@ -375,7 +380,6 @@ bool lama::Slam2DROS::DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg)
 
 bool lama::Slam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 {
-
     res.map.header.frame_id = global_frame_id_;
     res.map.header.stamp = ros::Time::now();
 
@@ -384,11 +388,103 @@ bool lama::Slam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap:
     return true;
 }
 
+
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "slam2d_ros");
     lama::Slam2DROS slam2d_ros;
-    ros::spin();
+
+    ros::NodeHandle pnh("~");
+
+    std::string rosbag_filename;
+    std::string scan_topic;
+
+    pnh.param("rosbag", rosbag_filename, std::string());
+    pnh.param("scan_topic", scan_topic, std::string("/scan"));
+
+    ROS_INFO("Subscribing to laser rosbag [%s]", scan_topic.c_str());
+
+    if( rosbag_filename.empty() )
+    {
+      ROS_INFO("Running SLAM in Live Mode");
+      ros::spin();
+    }
+    else{
+
+      ROS_INFO("Running SLAM in Rosbag Mode (offline)");
+
+      std::vector<std::string> topics;
+      topics.push_back(scan_topic);
+      topics.push_back("/tf");
+      topics.push_back("/tf_static");
+
+      rosbag::Bag bag;
+
+      try {
+          ROS_INFO("Opening rosbag [%s]", rosbag_filename.c_str());
+          bag.open(rosbag_filename, rosbag::bagmode::Read);
+      } catch (std::exception& ex) {
+        ROS_FATAL("Unable to open rosbag [%s]: %s", rosbag_filename.c_str(), ex.what());
+        return 1;
+      }
+
+      auto pub_scan  = pnh.advertise<sensor_msgs::LaserScan>(scan_topic,10);
+      auto pub_tf  = pnh.advertise<tf2_msgs::TFMessage>("/tf",10);
+      auto pub_tf_static  = pnh.advertise<tf2_msgs::TFMessage>("/tf_static",10);
+      auto pub_clock = pnh.advertise<rosgraph_msgs::Clock>("/clock",10);
+
+      rosbag::View view(bag, rosbag::TopicQuery(topics));
+
+      auto start_real_time = ros::WallTime::now();
+      auto start_sim_time = view.getBeginTime();
+      auto prev_real_time = start_real_time;
+      auto prev_sim_time = start_sim_time;
+      int num_scans = 0;
+
+      for(const rosbag::MessageInstance& m: view)
+      {
+        if( m.getTopic() == "/tf")
+        {
+          pub_tf.publish(m);
+        }
+        else if( m.getTopic() == scan_topic)
+        {
+          pub_scan.publish(m);
+          num_scans++;
+        }
+        else  if( m.getTopic() == "/tf_static")
+        {
+          pub_tf_static.publish(m);
+        }
+
+        rosgraph_msgs::Clock clock_msg;
+        clock_msg.clock = m.getTime();
+        pub_clock.publish( clock_msg );
+
+        auto real_time = ros::WallTime::now();
+        if( real_time - prev_real_time > ros::WallDuration(1) )
+        {
+          auto sim_time = m.getTime();
+          auto delta_real = (real_time-prev_real_time).toSec();
+          auto delta_sim  = (sim_time - prev_sim_time).toSec();
+          ROS_INFO("Processing the rosbag at %.1fX speed.", delta_sim / delta_real);
+          prev_sim_time = sim_time;
+          prev_real_time = real_time;
+        }
+
+        ros::spinOnce();
+      }
+      auto real_time = ros::WallTime::now();
+      auto delta_real = (real_time - start_real_time).toSec();
+      auto delta_sim  = (view.getEndTime() - start_sim_time).toSec();
+      ROS_INFO("--------- Mapping Completed ---------");
+      ROS_INFO("Processed the rosbag at %.1fX speed.", delta_sim / delta_real);
+      ROS_INFO("Number of processed Laserscan messages: %d", num_scans);
+
+      ros::spin();
+    }
+
+    ros::shutdown();
 
     return 0;
 }

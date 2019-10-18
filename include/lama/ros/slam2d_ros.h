@@ -97,7 +97,7 @@ private:
     // == Laser stuff ==
     // allow to handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
-    std::vector<bool>          laser_is_reversed_;;  ///< Vector that signals if the laser is reversed
+    std::vector<bool>          laser_is_reversed_;  ///< Vector that signals if the laser is reversed
     std::vector<Pose3D>        lasers_origin_;  ///< Laser origin transformation
 
     // maps
@@ -112,8 +112,8 @@ private:
     std::string scan_topic_;   ///< LaserScan message topic.
 
     ros::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
-    ros::WallDuration map_publish_period_;
-    ros::WallTime map_publish_last_time_;
+    ros::Duration map_publish_period_;
+    ros::Time map_publish_last_time_;
 
     // == Inner state ==
     Slam2D*   slam2d_;
