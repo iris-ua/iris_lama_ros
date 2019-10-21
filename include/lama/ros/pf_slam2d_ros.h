@@ -66,17 +66,20 @@ public:
 
     void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
     bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
+    void publishMaps();
 
 private:
     bool OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
     bool DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
     bool PatchMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
-
+    void publishCallback(const ros::TimerEvent &);
 private:
 
     // == ROS stuff ==
     ros::NodeHandle nh_;  ///< Root ros node handle.
     ros::NodeHandle pnh_; ///< Private ros node handle.
+
+    ros::Timer periodic_publish_; /// timer user to publish periodically the maps
 
     tf::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
     tf::TransformListener*    tf_;  ///< Gloabal transform listener.
@@ -118,8 +121,6 @@ private:
     std::string scan_topic_; ///< LaserScan message topic.
 
     ros::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
-    ros::WallDuration map_publish_period_;
-    ros::WallTime map_publish_last_time_;
 
     // == Inner state ==
     PFSlam2D* slam2d_;

@@ -10,5 +10,6 @@
   <node pkg="iris_lama_ros" name="pf_slam2d_ros" type="pf_slam2d_ros" output="screen" required="true">
     <param name="scan_topic"   value="$(arg scan_topic)" />
     <param name="rosbag" value="$(arg rosbag)" />
+    <param name="threads" value="8" />
   </node>
 </launch>
