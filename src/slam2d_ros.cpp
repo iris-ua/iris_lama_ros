@@ -32,9 +32,7 @@
  */
 
 #include <lama/image.h>
-
 #include "lama/ros/slam2d_ros.h"
-
 
 lama::Slam2DROS::Slam2DROS()
     : nh_(), pnh_("~")
@@ -69,7 +67,8 @@ lama::Slam2DROS::Slam2DROS()
     pnh_.param("cache_size", itmp, 100); options.cache_size = itmp;
 
     pnh_.param("map_publish_period", tmp, 5.0 );
-    map_publish_period_ = ros::WallDuration(tmp);
+    periodic_publish_ = nh_.createTimer(ros::Duration(tmp),
+                                        &Slam2DROS::publishCallback, this);
 
     slam2d_ = new Slam2D(options);
     slam2d_->setPose(prior);
@@ -203,28 +202,6 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
-
-    ros::WallTime now = ros::WallTime::now();
-    if ( (map_publish_period_.toSec() > 0.0f ) &&
-        (now - map_publish_last_time_) >= map_publish_period_ )
-    {
-        if (map_pub_.getNumSubscribers() > 0 ){
-            OccupancyMsgFromOccupancyMap(ros_occ_);
-            ros_occ_.header.stamp = laser_scan->header.stamp;
-            map_pub_.publish(ros_occ_);
-
-            map_publish_last_time_ = ros::WallTime::now();
-        }
-
-        if (dist_pub_.getNumSubscribers() > 0){
-            DistanceMsgFromOccupancyMap(ros_cost_);
-            ros_cost_.header.stamp = laser_scan->header.stamp;
-            dist_pub_.publish(ros_cost_);
-
-            map_publish_last_time_ = ros::WallTime::now();
-        }
-    }// endif
-
 }
 
 bool lama::Slam2DROS::initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -373,9 +350,26 @@ bool lama::Slam2DROS::DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg)
     return true;
 }
 
+void lama::Slam2DROS::publishCallback(const ros::TimerEvent &)
+{
+    auto time = ros::Time::now();
+    if ( map_pub_.getNumSubscribers() > 0 )
+    {
+      OccupancyMsgFromOccupancyMap(ros_occ_);
+      ros_occ_.header.stamp = time;
+      map_pub_.publish(ros_occ_);
+    }
+
+    if (dist_pub_.getNumSubscribers() > 0)
+    {
+      DistanceMsgFromOccupancyMap(ros_cost_);
+      ros_cost_.header.stamp = time;
+      dist_pub_.publish(ros_cost_);
+    }
+}
+
 bool lama::Slam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 {
-
     res.map.header.frame_id = global_frame_id_;
     res.map.header.stamp = ros::Time::now();
 
@@ -384,12 +378,41 @@ bool lama::Slam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap:
     return true;
 }
 
+void lama::Slam2DROS::publishMaps()
+{
+  auto time = ros::Time::now();
+
+    OccupancyMsgFromOccupancyMap(ros_occ_);
+    ros_occ_.header.stamp = time;
+    map_pub_.publish(ros_occ_);
+
+    DistanceMsgFromOccupancyMap(ros_cost_);
+    ros_cost_.header.stamp = time;
+    dist_pub_.publish(ros_cost_);
+}
+
+void ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename);
+
 int main(int argc, char *argv[])
 {
     ros::init(argc, argv, "slam2d_ros");
     lama::Slam2DROS slam2d_ros;
-    ros::spin();
 
+    ros::NodeHandle pnh("~");
+    std::string rosbag_filename;
+
+    if( !pnh.getParam("rosbag", rosbag_filename ) || rosbag_filename.empty())
+    {
+      ROS_INFO("Running SLAM in Live Mode");
+    }
+    else{
+      ROS_INFO("Running SLAM in Rosbag Mode (offline)");
+      ReplayRosbag(pnh, rosbag_filename);
+
+      // publish the maps a last time
+      slam2d_ros.publishMaps();
+    }
+    ros::spin();
     return 0;
 }
 
