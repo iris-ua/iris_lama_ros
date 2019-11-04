@@ -55,16 +55,20 @@ lama::Slam2DROS::Slam2DROS()
     Pose2D prior(pos, tmp);
 
     Slam2D::Options options;
-    pnh_.param("d_thresh", options.trans_thresh, 0.01);
-    pnh_.param("a_thresh", options.rot_thresh, 0.2);
-    pnh_.param("l2_max",   options.l2_max, 0.5);
+    pnh_.param("d_thresh",   options.trans_thresh, 0.01);
+    pnh_.param("a_thresh",   options.rot_thresh,   0.25);
+    pnh_.param("l2_max",     options.l2_max,        0.5);
+    pnh_.param("truncate",   options.truncated_ray, 0.0);
+    pnh_.param("resolution", options.resolution,   0.05);
     pnh_.param("strategy", options.strategy, std::string("gn"));
     pnh_.param("use_compression",       options.use_compression, false);
     pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4"));
+    pnh_.param("mrange",   max_range_, 16.0);
 
     int itmp;
-    pnh_.param("patch_size", itmp, 32); options.patch_size = itmp;
-    pnh_.param("cache_size", itmp, 100); options.cache_size = itmp;
+    pnh_.param("max_iterations", itmp, 100); options.max_iter   = itmp;
+    pnh_.param("patch_size",     itmp,  32); options.patch_size = itmp;
+    pnh_.param("cache_size",     itmp, 100); options.cache_size = itmp;
 
     pnh_.param("map_publish_period", tmp, 5.0 );
     periodic_publish_ = nh_.createTimer(ros::Duration(tmp),
@@ -136,7 +140,12 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
         size_t size = laser_scan->ranges.size();
         size_t beam_step = 1;
 
-        float max_range = laser_scan->range_max;
+        float max_range;
+        if (max_range_ == 0.0 || max_range_ > laser_scan->range_max)
+            max_range = laser_scan->range_max;
+        else
+            max_range = max_range_;
+
         float min_range = laser_scan->range_min;
         float angle_min = laser_scan->angle_min;
         float angle_inc = laser_scan->angle_increment;

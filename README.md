@@ -36,7 +36,7 @@ rosrun iris_lama_ros pf_slam2d_ros scan_topic:=base_scan
 
 Both nodes will publish to expected topics such as `/map` and `/tf`.
 
-## Offline Mapping (rosbag)
+### Offline Mapping (rosbag)
 
 If you want to obtain a map from a rosbag and you want to save time (a lot),
 you can let iris_lama_ros "play" the rosbag for you.
@@ -53,17 +53,35 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 
 * `~global_frame_id`: The frame attached to the map (default: "map").
 * `~odom_frame_id`: The frame attached to the odometry system (default: "odometry").
-* `~base_frame_id`: The frame attached to the mobile base (default: "base_link")
-* `~d_thresh`: Traveled distance to accumulate before updating (default: 0.5 meters).
+* `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
+* `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
+* `~initial_pos_x`: Initial x position (default: 0 meters).
+* `~initial_pos_y`: Initial y position (default: 0 meters).
+* `~initial_pos_a`: Initial rotation (or angle) (default: 0 rad).
+* `~d_thresh`: Traveled distance to accumulate before updating (default: 0.01 meters).
 * `~a_thresh`: Angular motion to accumulate before updating (default: 0.25 rads).
 * `~l2_max`: Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters).
+* `~resolution`: Resolution of the grid maps (default: 0.05 meters).
+* `~patch_size`: Length of a patch (default: 32 cells).
+* `~strategy`: Scan matching optimization strategy, gn or lm (default: "gn").
+* `~max_iterations`: Maximum number of interations performed by the optimizer (default: 100)
 * `~use_compression`: Should the maps be compressed (default: false).
 * `~compression_algorithm`: Compression algorithm to use, lz4 or zstd (default: "lz4").
+* `~cache_size`: Size of the LRU used during online data compression (default: 100).
+* `~mrange`: Maximum laser scan range (default: 16 meters).
+* `~map_publish_period`: How long between updates to the map (default: 5 seconds).
 
 Particle Filter SLAM only:
+* `~d_thresh`: Traveled distance to accumulate before updating (default: 0.5 meters).
 * `~particles`: Number of particles to use (default: 30).
+* `~seed`: RNG seed value, use 0 for a random seed from device (default: 0)
 * `~threads`: Number of working threads, -1 means disabled and 0 will expand to the available number of cores (default: -1).
+* `~sigma`: Measurement variance (default: 0.05).
 * `~lgain`: Gain value for smoothing the particles likelihood (default: 3.0).
+* `~srr`: Odometry error in rotation as a function of rotation (default: 0.1).
+* `~str`: Odometry error in rotation as a function of translation (default: 0.2).
+* `~stt`: Odometry error in traslation as a function of translation (default: 0.1).
+* `~srt`: Odometry error in translation as a funciton of rotation (default: 0.1).
 
 ## Localization node
 

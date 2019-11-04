@@ -63,20 +63,29 @@ lama::PFSlam2DROS::PFSlam2DROS()
     Pose2D prior(pos, tmp);
 
     PFSlam2D::Options options;
-    pnh_.param("d_thresh", options.trans_thresh, 0.5);
-    pnh_.param("a_thresh", options.rot_thresh, 0.25);
-    pnh_.param("l2_max",   options.l2_max, 0.5);
-    pnh_.param("lgain",    options.meas_sigma_gain, 3.0);
-    pnh_.param("resolution", options.resolution, 0.05);
-    pnh_.param("use_compression", options.use_compression, false);
+    pnh_.param("srr", options.srr, 0.1);
+    pnh_.param("str", options.str, 0.2);
+    pnh_.param("stt", options.stt, 0.1);
+    pnh_.param("srt", options.srt, 0.2);
+    pnh_.param("sigma",      options.meas_sigma,      0.05);
+    pnh_.param("lgain",      options.meas_sigma_gain,  3.0);
+    pnh_.param("d_thresh",   options.trans_thresh,     0.5);
+    pnh_.param("a_thresh",   options.rot_thresh,      0.25);
+    pnh_.param("l2_max",     options.l2_max,           0.5);
+    pnh_.param("truncate",   options.truncated_ray,    0.0);
+    pnh_.param("resolution", options.resolution,      0.05);
+    pnh_.param("strategy", options.strategy, std::string("gn"));
+    pnh_.param("use_compression",       options.use_compression, false);
     pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4"));
     pnh_.param("mrange",   max_range_, 16.0);
-    pnh_.param("strategy", options.strategy, std::string("gn"));
 
     int itmp;
     pnh_.param("patch_size", itmp, 32); options.patch_size = itmp;
     pnh_.param("particles",  itmp, 30); options.particles = itmp;
     pnh_.param("cache_size", itmp, 100); options.cache_size = itmp;
+
+    // ros param does not have unsigned int??
+    pnh_.param("seed", tmp, 0.0); options.seed = tmp;
 
     pnh_.param("map_publish_period", tmp, 5.0);
     pnh_.param("threads", options.threads, -1);
@@ -168,7 +177,12 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
     size_t size = laser_scan->ranges.size();
     size_t beam_step = 1;
 
-    float max_range = max_range_; //laser_scan->range_max;
+    float max_range;
+    if (max_range_ == 0.0 || max_range_ > laser_scan->range_max)
+        max_range = laser_scan->range_max;
+    else
+        max_range = max_range_;
+
     float min_range = laser_scan->range_min;
     float angle_min = laser_scan->angle_min;
     float angle_inc = laser_scan->angle_increment;
