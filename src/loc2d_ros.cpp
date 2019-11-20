@@ -69,7 +69,7 @@ lama::Loc2DROS::Loc2DROS()
     nav_msgs::GetMap::Request  req;
     nav_msgs::GetMap::Response resp;
     while(ros::ok() and not ros::service::call("static_map", req, resp)){
-        ROS_WARN("Request for map failed; trying again ...");
+        ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
         ros::Duration d(0.5);
         d.sleep();
     }// end while
@@ -310,4 +310,3 @@ int main(int argc, char *argv[])
 
     return 0;
 }
-
