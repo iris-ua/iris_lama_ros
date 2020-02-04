@@ -63,7 +63,7 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~l2_max`: Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters).
 * `~resolution`: Resolution of the grid maps (default: 0.05 meters).
 * `~patch_size`: Length of a patch (default: 32 cells).
-* `~strategy`: Scan matching optimization strategy, gn or lm (default: "gn").
+* `~strategy`: Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn").
 * `~max_iterations`: Maximum number of interations performed by the optimizer (default: 100)
 * `~use_compression`: Should the maps be compressed (default: false).
 * `~compression_algorithm`: Compression algorithm to use, lz4 or zstd (default: "lz4").
@@ -91,4 +91,20 @@ To run the localization just execute
 rosrun iris_lama_ros loc2d_ros scan:=base_scan
 ```
 Please use `rviz` to set the initial pose. Global localization is not yet implemented.
+
+### Parameters
+
+* `~global_frame_id`: The frame attached to the map (default: "map").
+* `~odom_frame_id`: The frame attached to the odometry system (default: "odometry").
+* `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
+* `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
+* `~initial_pos_x`: Initial x position (default: 0 meters).
+* `~initial_pos_y`: Initial y position (default: 0 meters).
+* `~initial_pos_a`: Initial rotation (or angle) (default: 0 rad).
+* `~d_thresh`: Traveled distance to accumulate before updating (default: 0.01 meters).
+* `~a_thresh`: Angular motion to accumulate before updating (default: 0.2 rads).
+* `~l2_max`: Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters).
+* `~strategy`: Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn").
+* `~patch_size`: Length of a patch (default: 32 cells).
+
 
