@@ -68,6 +68,8 @@ public:
     bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
     void publishMaps();
 
+    void printSummary();
+
 private:
     bool OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
     bool DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);

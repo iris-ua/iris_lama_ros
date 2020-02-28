@@ -67,6 +67,8 @@ public:
     bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
     void publishMaps();
 
+    void printSummary();
+
 private:
 
     bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);

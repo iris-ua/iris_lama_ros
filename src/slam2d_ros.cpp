@@ -32,7 +32,9 @@
  */
 
 #include <lama/image.h>
+
 #include "lama/ros/slam2d_ros.h"
+#include "lama/ros/offline_replay.h"
 
 lama::Slam2DROS::Slam2DROS()
     : nh_(), pnh_("~")
@@ -70,6 +72,8 @@ lama::Slam2DROS::Slam2DROS()
     pnh_.param("patch_size",     itmp,  32); options.patch_size = itmp;
     pnh_.param("cache_size",     itmp, 100); options.cache_size = itmp;
 
+    pnh_.param("create_summary", options.create_summary, false);
+
     pnh_.param("map_publish_period", tmp, 5.0 );
     periodic_publish_ = nh_.createTimer(ros::Duration(tmp),
                                         &Slam2DROS::publishCallback, this);
@@ -78,7 +82,7 @@ lama::Slam2DROS::Slam2DROS()
     slam2d_->setPose(prior);
 
     // Setup TF workers ...
-    tf_ = new tf::TransformListener();
+    tf_ = new tf::TransformListener(pnh_, ros::Duration(30));
     tfb_= new tf::TransformBroadcaster();
 
     // Syncronized LaserScan messages with odometry transforms. This ensures that an odometry transformation
@@ -400,7 +404,11 @@ void lama::Slam2DROS::publishMaps()
     dist_pub_.publish(ros_cost_);
 }
 
-void ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename);
+void lama::Slam2DROS::printSummary()
+{
+    if (slam2d_->summary)
+        std::cout << slam2d_->summary->report() << std::endl;
+}
 
 int main(int argc, char *argv[])
 {
@@ -410,17 +418,20 @@ int main(int argc, char *argv[])
     ros::NodeHandle pnh("~");
     std::string rosbag_filename;
 
-    if( !pnh.getParam("rosbag", rosbag_filename ) || rosbag_filename.empty())
-    {
-      ROS_INFO("Running SLAM in Live Mode");
-    }
-    else{
-      ROS_INFO("Running SLAM in Rosbag Mode (offline)");
-      ReplayRosbag(pnh, rosbag_filename);
+    if( !pnh.getParam("rosbag", rosbag_filename ) || rosbag_filename.empty()) {
+        ROS_INFO("Running SLAM in Live Mode");
+    } else{
+        ROS_INFO("Running SLAM in Rosbag Mode (offline)");
+        lama::ReplayRosbag(pnh, rosbag_filename);
 
-      // publish the maps a last time
-      slam2d_ros.publishMaps();
+        if (ros::ok())
+            slam2d_ros.printSummary();
+
+        ROS_INFO("You can now save your map. Use ctrl-c to quit.");
+        // publish the maps a last time
+        slam2d_ros.publishMaps();
     }
+
     ros::spin();
     return 0;
 }

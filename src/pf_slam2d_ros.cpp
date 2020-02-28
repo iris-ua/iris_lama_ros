@@ -33,14 +33,14 @@
 
 #include <rosbag/bag.h>
 #include <rosbag/view.h>
-#include <boost/foreach.hpp>
-#define foreach BOOST_FOREACH
 
 #include <nav_msgs/Path.h>
 #include <geometry_msgs/PoseStamped.h>
 
 #include <lama/image.h>
-#include <lama/ros/pf_slam2d_ros.h>
+
+#include "lama/ros/pf_slam2d_ros.h"
+#include "lama/ros/offline_replay.h"
 
 lama::PFSlam2DROS::PFSlam2DROS()
     : nh_(), pnh_("~")
@@ -76,19 +76,20 @@ lama::PFSlam2DROS::PFSlam2DROS()
     pnh_.param("resolution", options.resolution,      0.05);
     pnh_.param("strategy", options.strategy, std::string("gn"));
     pnh_.param("use_compression",       options.use_compression, false);
-    pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4"));
+    pnh_.param("compression_algorithm", options.calgorithm, std::string("zstd"));
     pnh_.param("mrange",   max_range_, 16.0);
+    pnh_.param("threads", options.threads, -1);
 
     int itmp;
     pnh_.param("patch_size", itmp, 32); options.patch_size = itmp;
     pnh_.param("particles",  itmp, 30); options.particles = itmp;
     pnh_.param("cache_size", itmp, 100); options.cache_size = itmp;
-
     // ros param does not have unsigned int??
     pnh_.param("seed", tmp, 0.0); options.seed = tmp;
 
+    pnh_.param("create_summary", options.create_summary, false);
+
     pnh_.param("map_publish_period", tmp, 5.0);
-    pnh_.param("threads", options.threads, -1);
     periodic_publish_ = nh_.createTimer(ros::Duration(tmp),
                                         &PFSlam2DROS::publishCallback, this);
 
@@ -224,7 +225,6 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
             tf::Transform tmp_tf(tf::createQuaternionFromYaw(pose.rotation()), tf::Vector3(pose.x(), pose.y(), 0));
             tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
             tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
-
         }catch(tf::TransformException){
             ROS_WARN("Failed to subtract base to odom transform");
             return;
@@ -287,28 +287,29 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
 
 void lama::PFSlam2DROS::publishCallback(const ros::TimerEvent &)
 {
-   auto time = ros::Time::now();
+
+    auto time = ros::Time::now();
 
     nav_msgs::OccupancyGrid ros_occ;
     ros_occ.header.frame_id = global_frame_id_;
     ros_occ.header.stamp = time;
 
     if (map_pub_.getNumSubscribers() > 0 ){
-      OccupancyMsgFromOccupancyMap(ros_occ);
-      ros_occ_.header.stamp = time;
-      map_pub_.publish(ros_occ);
+        OccupancyMsgFromOccupancyMap(ros_occ);
+        ros_occ_.header.stamp = time;
+        map_pub_.publish(ros_occ);
     }
 
     if (dist_pub_.getNumSubscribers() > 0){
-      DistanceMsgFromOccupancyMap(ros_cost_);
-      ros_cost_.header.stamp = time;
-      dist_pub_.publish(ros_cost_);
+        DistanceMsgFromOccupancyMap(ros_cost_);
+        ros_cost_.header.stamp = time;
+        dist_pub_.publish(ros_cost_);
     }
 
     if (patch_pub_.getNumSubscribers() > 0){
-      PatchMsgFromOccupancyMap(ros_patch_);
-      ros_patch_.header.stamp = time;
-      patch_pub_.publish(ros_patch_);
+        PatchMsgFromOccupancyMap(ros_patch_);
+        ros_patch_.header.stamp = time;
+        patch_pub_.publish(ros_patch_);
     }
 }
 
@@ -480,7 +481,11 @@ bool lama::PFSlam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMa
     return true;
 }
 
-void ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename);
+void lama::PFSlam2DROS::printSummary()
+{
+    if (slam2d_->summary)
+        std::cout << slam2d_->summary->report() << std::endl;
+}
 
 int main(int argc, char *argv[])
 {
@@ -490,17 +495,20 @@ int main(int argc, char *argv[])
     ros::NodeHandle pnh("~");
     std::string rosbag_filename;
 
-    if( !pnh.getParam("rosbag", rosbag_filename ) || rosbag_filename.empty())
-    {
-      ROS_INFO("Running SLAM in Live Mode");
-    }
-    else{
-      ROS_INFO("Running SLAM in Rosbag Mode (offline)");
-      ReplayRosbag(pnh, rosbag_filename);
+    if( !pnh.getParam("rosbag", rosbag_filename ) || rosbag_filename.empty()) {
+        ROS_INFO("Running SLAM in Live Mode");
+    } else{
+        ROS_INFO("Running SLAM in Rosbag Mode (offline)");
+        lama::ReplayRosbag(pnh, rosbag_filename);
 
-      // publish the maps a last time
-      slam2d_ros.publishMaps();
+        if (ros::ok())
+            slam2d_ros.printSummary();
+
+        ROS_INFO("You can now save your map. Use ctrl-c to quit.");
+        // publish the maps a last time
+        slam2d_ros.publishMaps();
     }
+
     ros::spin();
     return 0;
 }
