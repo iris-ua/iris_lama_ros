@@ -34,22 +34,21 @@
 #pragma once
 
 // ROS includes
-#include <ros/ros.h>
+#include "rclcpp/rclcpp.hpp"
 
 // Transform include
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
-#include <tf/message_filter.h>
-#include <tf/tf.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/message_filter.h>
 
 #include <message_filters/subscriber.h>
 
 // Pose publishing
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 // Laser message
-#include <sensor_msgs/LaserScan.h>
+#include "sensor_msgs/msg/laser_scan.hpp"
 // maps
-#include <nav_msgs/OccupancyGrid.h>
+#include "nav_msgs/msg/occupancy_grid.hpp"
 
 #include <lama/pose3d.h>
 #include <lama/loc2d.h>
@@ -62,40 +61,40 @@ namespace lama {
 class Loc2DROS {
 public:
 
-    Loc2DROS();
+    Loc2DROS(std::string);
     ~Loc2DROS();
 
-    void onInitialPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr& initial_pose);
-    void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    void onInitialPose(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr initial_pose);
+    void onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
 
     //bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
-
+    std::shared_ptr<rclcpp::Node> nh;
 private:
 
-    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg);
+    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid& msg);
 
-    bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    bool initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
 
 private:
 
     // == ROS stuff ==
-    ros::NodeHandle nh_;  ///< Root ros node handle.
-    ros::NodeHandle pnh_; ///< Private ros node handle.
+    //rclcpp::Node nh_;  ///< Root ros node handle.
+    rclcpp::Node pnh_; ///< Private ros node handle.
 
-    tf::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
-    tf::TransformListener*    tf_;  ///< Gloabal transform listener.
+    tf2_ros::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
+    tf2_ros::TransformListener*    tf_;  ///< Gloabal transform listener.
 
-    tf::Transform latest_tf_; ///< The most recent transform.
-    ros::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
+    tf2_ros::Buffer latest_tf_; ///< The most recent transform.
+    rclcpp::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
 
-    tf::MessageFilter<sensor_msgs::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
-    message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+    tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
+    message_filters::Subscriber<sensor_msgs::msg::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
 
     // Publishers
-    ros::Publisher pose_pub_; ///< Publishers of the pose with covariance
+    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_; ///< Publishers of the pose with covariance
 
     // Subscribers
-    ros::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
+    rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
 
     // == Laser stuff ==
     // Handle multiple lasers at once

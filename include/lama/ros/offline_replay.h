@@ -33,10 +33,10 @@
 
 #pragma once
 
-#include <ros/ros.h>
+#include "rclcpp/rclcpp.hpp"
 
 namespace lama {
 
-void ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename);
+void ReplayRosbag(rclcpp::Node& pnh, const std::string& rosbag_filename);
 
 } // namespace lama

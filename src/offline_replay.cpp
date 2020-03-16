@@ -31,19 +31,26 @@
  *
  */
 
-#include <rosbag/bag.h>
-#include <rosbag/view.h>
-#include <tf2_msgs/TFMessage.h>
-#include <rosgraph_msgs/Clock.h>
-#include <sensor_msgs/LaserScan.h>
+// TODO
+// https://github.com/ros2/rosbag2/issues/126
+// https://github.com/ros2/rosbag2/blob/master/rosbag2_transport/include/rosbag2_transport/rosbag2_transport.hpp
 
-#include <lama/time.h>
+//#include <rosbag/bag.h>
+//#include <rosbag/view.h>
+#include "tf2_msgs/msg/tf_message.hpp"
+//#include <tf2_msgs/TFMessage.h>
+#include "rosgraph_msgs/msg/clock.hpp"
+//#include <rosgraph_msgs/Clock.h>
+#include "sensor_msgs/msg/laser_scan.h"
+//#include <sensor_msgs/LaserScan.h>
 
+#include "lama/time.h"
 #include "lama/ros/offline_replay.h"
 
-void lama::ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename)
+
+void lama::ReplayRosbag(rclcpp::Node& pnh, const std::string& rosbag_filename)
 {
-    std::string scan_topic;
+    /*std::string scan_topic;
     pnh.param("scan_topic", scan_topic, std::string("/scan"));
 
     ROS_INFO("Scan topic: %s", scan_topic.c_str());
@@ -118,5 +125,5 @@ void lama::ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename
     ROS_INFO("Processed the rosbag at %.1fX speed.", delta_sim / delta_real);
     ROS_INFO("Number of processed Laserscan messages: %d", num_scans);
 
-    bag.close();
+    bag.close();*/
 }

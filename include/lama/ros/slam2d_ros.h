@@ -34,23 +34,26 @@
 #pragma once
 
 // ROS includes
-#include <ros/ros.h>
+#include "rclcpp/rclcpp.hpp"
 
 // Transform include
-#include <tf/transform_broadcaster.h>
-#include <tf/transform_listener.h>
-#include <tf/message_filter.h>
-#include <tf/tf.h>
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
+#include <tf2_ros/message_filter.h>
 
 #include <message_filters/subscriber.h>
 
 // Pose publishing
-#include <geometry_msgs/PoseWithCovarianceStamped.h>
+//#include <geometry_msgs/PoseWithCovarianceStamped.h>
+#include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 // Laser message
-#include <sensor_msgs/LaserScan.h>
+//#include <sensor_msgs/LaserScan.h>
+#include "sensor_msgs/msg/laser_scan.hpp"
 // maps
-#include <nav_msgs/OccupancyGrid.h>
-#include <nav_msgs/GetMap.h>
+//#include <nav_msgs/OccupancyGrid.h>
+#include "nav_msgs/msg/occupancy_grid.hpp"
+//#include <nav_msgs/GetMap.h>
+#include "nav_msgs/srv/get_map.hpp"
 
 #include <lama/slam2d.h>
 #include <lama/pose3d.h>
@@ -60,45 +63,54 @@ namespace lama {
 class Slam2DROS {
 public:
 
-    Slam2DROS();
+    Slam2DROS(std::string name);
     ~Slam2DROS();
 
-    void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
-    bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
+    void onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
+    // TODO change signature https://github.com/ros2/examples/blob/master/rclcpp/minimal_service/main.cpp
+    bool onGetMap(nav_msgs::srv::GetMap::Request &req, nav_msgs::srv::GetMap::Response &res);
     void publishMaps();
 
     void printSummary();
 
+    std::shared_ptr<rclcpp::Node> nh;
+
 private:
 
-    bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    bool initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
 
-    bool OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
-    bool DistanceMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg);
+    bool OccupancyMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid& msg);
+    bool DistanceMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid& msg);
 
-    void publishCallback(const ros::TimerEvent &);
+    void publishCallback();  // const rclcpp::TimerEvent &
 private:
 
     // == ROS stuff ==
-    ros::NodeHandle nh_;  ///< Root ros node handle.
-    ros::NodeHandle pnh_; ///< Private ros node handle.
+    //rclcpp::Node nh_;  ///< Root ros node handle.
+    rclcpp::Node pnh_; ///< Private ros node handle.
 
-    ros::Timer periodic_publish_; /// timer user to publish periodically the maps
+    rclcpp::Clock ros_clock;
+    rclcpp::TimerBase::SharedPtr periodic_publish_;
+    //rclcpp::Timer periodic_publish_; /// timer user to publish periodically the maps
 
-    tf::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
-    tf::TransformListener*    tf_;  ///< Gloabal transform listener.
+    tf2_ros::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
+    tf2_ros::TransformListener*    tf_;  ///< Gloabal transform listener.
 
-    tf::Transform latest_tf_; ///< The most recent transform.
+    tf2_ros::Buffer latest_tf_; ///< The most recent transform.
 
-    tf::MessageFilter<sensor_msgs::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
-    message_filters::Subscriber<sensor_msgs::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+    tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
+    message_filters::Subscriber<sensor_msgs::msg::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
 
-    // publishers
-    ros::Publisher pose_pub_;   ///< Publisher of the pose with covariance.
-    ros::Publisher map_pub_;
-    ros::Publisher dist_pub_;
+    // publishers   
+    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_;      ///< Publisher of the pose with covariance.
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr map_pub_;
+    rclcpp::Publisher<nav_msgs::msg::OccupancyGrid>::SharedPtr dist_pub_;
 
-    ros::ServiceServer ss_;
+    /*rclcpp::Publisher pose_pub_;   ///< Publisher of the pose with covariance.
+    rclcpp::Publisher map_pub_;
+    rclcpp::Publisher dist_pub_;*/
+
+    rclcpp::ServiceServer ss_;
 
     // == Laser stuff ==
     // allow to handle multiple lasers at once
@@ -108,8 +120,8 @@ private:
     double max_range_;
 
     // maps
-    nav_msgs::OccupancyGrid ros_occ_;
-    nav_msgs::OccupancyGrid ros_cost_;
+    nav_msgs::msg::OccupancyGrid ros_occ_;
+    nav_msgs::msg::OccupancyGrid ros_cost_;
 
     // == configuration variables ==
     std::string global_frame_id_;       ///< Global frame id, usualy the map frame.
@@ -118,7 +130,7 @@ private:
 
     std::string scan_topic_;   ///< LaserScan message topic.
 
-    ros::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
+    rclcpp::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
 
     // == Inner state ==
     Slam2D*   slam2d_;
