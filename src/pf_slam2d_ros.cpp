@@ -44,6 +44,8 @@
 #include "lama/ros/pf_slam2d_ros.h"
 #include "lama/ros/offline_replay.h"
 
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
 lama::PFSlam2DROS::PFSlam2DROS()
     : pnh_("~")     // nh_(),
 {
@@ -160,15 +162,15 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
         frame_to_laser_[laser_scan->header.frame_id] = laser_index;
 
         // find the origin of the sensor
-        tf2_ros::Stamped<tf2_ros::Pose> identity(tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2_ros::Vector3(0,0,0)),
+        tf2::Stamped<tf2::Transform> identity(tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2::Vector3(0,0,0)),
                                        rclcpp::Time(), laser_scan->header.frame_id);
-        tf2_ros::Stamped<tf2_ros::Pose> laser_origin;
+        tf2::Stamped<tf2::Transform> laser_origin;
         try{ tf_->transformPose(base_frame_id_, identity, laser_origin); }
-        catch(tf2_ros::TransformException& e)
+        catch(tf2::TransformException& e)
         { RCLCPP_ERROR(this->get_logger(), "Could not find origin of %s", laser_scan->header.frame_id.c_str()); return; }
 
         Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  0, 0, tf2_ros::getYaw(laser_origin.getRotation()));
+                  0, 0, tf::getYaw(laser_origin.getRotation()));
 
         lasers_origin_.push_back( lp );
 
@@ -178,11 +180,11 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
     }
 
     // Where was the robot at the time of the scan ?
-    tf2_ros::Stamped<tf2_ros::Pose> identity(tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2_ros::Vector3(0,0,0)),
+    tf2::Stamped<tf2::Transform> identity(tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2::Vector3(0,0,0)),
                                    laser_scan->header.stamp, base_frame_id_);
-    tf2_ros::Stamped<tf2_ros::Pose> odom_tf;
+    tf2::Stamped<tf2::Transform> odom_tf;
     try{ tf_->transformPose(odom_frame_id_, identity, odom_tf); }
-    catch(tf2_ros::TransformException& e)
+    catch(tf2::TransformException& e)
     { RCLCPP_WARN(this->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what() ); return; }
 
     Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(),
@@ -235,12 +237,12 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
         Pose2D pose = slam2d_->getPose();
 
         // subtracting base to odom from map to base and send map to odom instead
-        tf2_ros::Stamped<tf2_ros::Pose> odom_to_map;
+        tf2::Stamped<tf2::Transform> odom_to_map;
         try{
-            tf2_ros::Transform tmp_tf(tf2_ros::createQuaternionFromYaw(pose.rotation()), tf2_ros::Vector3(pose.x(), pose.y(), 0));
-            tf2_ros::Stamped<tf2_ros::Pose> tmp_tf_stamped (tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
+            tf2_ros::Transform tmp_tf(tf2_ros::createQuaternionFromYaw(pose.rotation()), tf2::Vector3(pose.x(), pose.y(), 0));
+            tf2::Stamped<tf2::Transform> tmp_tf_stamped (tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
             tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
-        }catch(tf2_ros::TransformException){
+        }catch(tf2::TransformException){
             RCLCPP_WARN(this->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
@@ -251,7 +253,7 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
         // We want to send a transform that is good up until a
         // tolerance time so that odom can be used
         rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
-        tf2_ros::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
+        tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
                                             transform_expiration,
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
@@ -271,7 +273,11 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
             p.pose.position.x = slam2d_->getParticles()[idx].poses[i].x();
             p.pose.position.y = slam2d_->getParticles()[idx].poses[i].y();
             p.pose.position.z = 0.0;
-            p.pose.orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[idx].poses[i].rotation());
+
+            tf2::Quaternion quat_tf;
+            quat_tf.setRPY(0.0, 0.0, slam2d_->getParticles()[idx].poses[i].rotation());
+            tf2::convert(quat_tf, p.pose.orientation);
+            //p.pose.orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[idx].poses[i].rotation());
 
             path.poses.push_back(p);
         }
@@ -282,7 +288,7 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
     } else {
         // Nothing has change, therefore, republish the last transform.
         rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
-        tf2_ros::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration,
+        tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration,
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
@@ -294,7 +300,11 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr
         poses_.poses[i].position.x = slam2d_->getParticles()[i].pose.x();
         poses_.poses[i].position.y = slam2d_->getParticles()[i].pose.y();
         poses_.poses[i].position.z = 0.0;
-        poses_.poses[i].orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[i].pose.rotation());
+
+        tf2::Quaternion quat_tf;
+        quat_tf.setRPY(0.0, 0.0, slam2d_->getParticles()[i].pose.rotation());
+        tf2::convert(quat_tf, poses_.poses[i].orientation);
+        //poses_.poses[i].orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[i].pose.rotation());
     }
 
     poses_pub_->publish(poses_);
@@ -392,7 +402,11 @@ bool lama::PFSlam2DROS::OccupancyMsgFromOccupancyMap(nav_msgs::msg::OccupancyGri
     msg.info.origin.position.x = pos.x();
     msg.info.origin.position.y = pos.y();
     msg.info.origin.position.z = 0;
-    msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
+
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0.0, 0.0, 0);
+    tf2::convert(quat_tf, msg.info.origin.orientation);
+    //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;
 }
@@ -436,7 +450,11 @@ bool lama::PFSlam2DROS::DistanceMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid
     msg.info.origin.position.x = pos.x();
     msg.info.origin.position.y = pos.y();
     msg.info.origin.position.z = 0;
-    msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
+
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0.0, 0.0, 0);
+    tf2::convert(quat_tf, msg.info.origin.orientation);
+    //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;
 }
@@ -480,7 +498,11 @@ bool lama::PFSlam2DROS::PatchMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid& m
     msg.info.origin.position.x = min[0];
     msg.info.origin.position.y = min[1];
     msg.info.origin.position.z = 0;
-    msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
+
+    tf2::Quaternion quat_tf;
+    quat_tf.setRPY(0.0, 0.0, 0.0);
+    tf2::convert(quat_tf, msg.info.origin.orientation);
+    //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;
 }
