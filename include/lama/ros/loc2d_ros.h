@@ -40,6 +40,8 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/message_filter.h>
+#include "tf2_ros/create_timer_ros.h"
+#include "tf2_ros/buffer.h"
 
 #include <message_filters/subscriber.h>
 
@@ -58,61 +60,80 @@
 
 namespace lama {
 
-class Loc2DROS {
-public:
+    class Loc2DROS {
+    public:
 
-    Loc2DROS(std::string);
-    ~Loc2DROS();
+        Loc2DROS(const std::string &);
 
-    void onInitialPose(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr initial_pose);
-    void onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
+        ~Loc2DROS();
 
-    //bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
-    std::shared_ptr<rclcpp::Node> nh;
-private:
+        void topic_callback(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr) const;
 
-    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid& msg);
+        void onInitialPose(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr initial_pose);
 
-    bool initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
+        void onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
 
-private:
+        //bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
+        //std::shared_ptr <rclcpp::Node> nh;
+    private:
 
-    // == ROS stuff ==
-    //rclcpp::Node nh_;  ///< Root ros node handle.
-    rclcpp::Node pnh_; ///< Private ros node handle.
+        void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg);
 
-    tf2_ros::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
-    tf2_ros::TransformListener*    tf_;  ///< Gloabal transform listener.
+        bool initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
 
-    tf2_ros::Buffer latest_tf_; ///< The most recent transform.
-    rclcpp::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
+    private:
+        std::shared_ptr <rclcpp::Node> node;
 
-    tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
-    message_filters::Subscriber<sensor_msgs::msg::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+        // == configuration variables ==
+        std::string global_frame_id_;       ///< Global frame id, usualy the map frame.
+        std::string odom_frame_id_;         ///< Odometry frame id.
+        std::string base_frame_id_;         ///< Robot base frame.
 
-    // Publishers
-    rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_; ///< Publishers of the pose with covariance
+        std::string scan_topic_;   ///< LaserScan message topic.
 
-    // Subscribers
-    rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
+        rclcpp::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
 
-    // == Laser stuff ==
-    // Handle multiple lasers at once
-    std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
-    std::vector<bool>          laser_is_reversed_;;  ///< Vector that signals if the laser is reversed
-    std::vector<Pose3D>        lasers_origin_;  ///< Laser origin transformation
+        std::shared_ptr <tf2_ros::TransformBroadcaster> tfb_;         ///< Position transform broadcaster.
+        std::shared_ptr <tf2_ros::TransformListener> tf_;             ///< Global transform listener.
+        std::shared_ptr <tf2_ros::Buffer> tf_buffer_;
 
-    // == configuration variables ==
-    std::string global_frame_id_;       ///< Global frame id, usualy the map frame.
-    std::string odom_frame_id_;         ///< Odometry frame id.
-    std::string base_frame_id_;         ///< Robot base frame.
+        //https://github.com/ros-planning/navigation2/blob/a05c9440e76dfd0d76f243740c143a2a1b5d7c1d/nav2_costmap_2d/src/costmap_2d_ros.cpp#L135
+        //https://github.com/ros-planning/navigation2/blob/master/nav2_costmap_2d/src/costmap_2d_ros.cpp
 
-    std::string scan_topic_;   ///< LaserScan message topic.
+        // Subscribers
+        std::shared_ptr <message_filters::Subscriber <sensor_msgs::msg::LaserScan>> laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+        std::shared_ptr <tf2_ros::MessageFilter <sensor_msgs::msg::LaserScan>> laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
 
-    // == Inner state ==
-    Loc2D   loc2d_;
-    Pose2D odom_;
-};
+        rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_sub_;
+
+        // Publishers
+        rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_; ///< Publishers of the pose with covariance
+
+        // == Inner state ==
+        Loc2D loc2d_;
+/*
+// == ROS stuff ==
+        //rclcpp::Node nh_;  ///< Root ros node handle.
+        //rclcpp::Node pnh_; ///< Private ros node handle.
+
+        tf2_ros::Buffer latest_tf_; ///< The most recent transform.
+
+
+
+        //rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
+
+        // == Laser stuff ==
+        // Handle multiple lasers at once
+        std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
+        std::vector<bool> laser_is_reversed_;  ///< Vector that signals if the laser is reversed
+        std::vector <Pose3D> lasers_origin_;  ///< Laser origin transformation
+
+
+
+        // == Inner state ==
+        Loc2D loc2d_;
+        Pose2D odom_;*/
+    };
 
 } /* lama */
 
