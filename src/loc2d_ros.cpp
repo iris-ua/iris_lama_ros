@@ -38,6 +38,7 @@
 #include "lama/time.h"
 
 #include <tf2/convert.h>
+#include <tf2_ros/buffer_interface.h>
 
 lama::Loc2DROS::Loc2DROS(const std::string &name) :
         transform_tolerance_(0, 100000000) {
@@ -86,12 +87,12 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     auto req = std::make_shared<nav_msgs::srv::GetMap::Request>();
     auto client = node->create_client<nav_msgs::srv::GetMap>("static_map");
     auto result_future = client->async_send_request(req);
+    rclcpp::Rate r(1);
     while (rclcpp::ok() and rclcpp::spin_until_future_complete(node, result_future) != rclcpp::executor::FutureReturnCode::SUCCESS)
     {
         // http://docs.ros2.org/latest/api/rclcpp/logging_8hpp.html#a451bee77c253ec72f4984bb577ff818a
         rclcpp::Clock myClock = *node->get_clock();  // Why cant this be directly used as an argument?...
         RCLCPP_WARN_THROTTLE(node->get_logger(), myClock, 1, "Request for map failed; trying again ...");
-        rclcpp::Rate r(0.5);
         r.sleep();
     }
 
@@ -114,10 +115,8 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::msg::PoseWithCovarianceS
     tf2::Quaternion q;
     tf2::convert(initial_pose->pose.pose.orientation, q);
     tf2::Matrix3x3 m(q);
-    double roll, pitch, initial_pose_yaw;
-    m.getRPY(roll, pitch, initial_pose_yaw);
-
-    //float yaw = tf2_ros::getYaw(initial_pose->pose.pose.orientation);
+    double initial_pose_roll, initial_pose_pitch, initial_pose_yaw;
+    m.getRPY(initial_pose_roll, initial_pose_pitch, initial_pose_yaw);
 
     RCLCPP_INFO(node->get_logger(), "Setting pose to (%f, %f, %f)", x, y, initial_pose_yaw);
     lama::Pose2D pose(x, y, initial_pose_yaw);
@@ -126,7 +125,7 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::msg::PoseWithCovarianceS
 }
 
 void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
-    /*int laser_index = -1;
+    int laser_index = -1;
 
     // verify if it is from a known source
     if (frame_to_laser_.find(laser_scan->header.frame_id) == frame_to_laser_.end()) {
@@ -138,23 +137,31 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         laser_index = frame_to_laser_[laser_scan->header.frame_id];
     }
 
-    //tf::createIdentityQuaternion()
-
     // Where was the robot at the time of the scan ?
-    tf2::Stamped <tf2::Transform> identity(
-            tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
-            laser_scan->header.stamp, base_frame_id_);
+    // http://wiki.ros.org/tf2/Terminology
+    // tf::Pose equivalent to http://docs.ros.org/groovy/api/tf2/html/c++/classbtTransform.html
+    // Is btTransform equivalent to http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Transform.html ?
+    // https://github.com/ros2/geometry2/blob/ros2/tf2/include/tf2/transform_datatypes.h
+    // https://answers.ros.org/question/309953/lookuptransform-builtin_interfacestime-to-tf2timepoint/
+    tf2::TimePoint tp = tf2_ros::fromMsg(laser_scan->header.stamp);
+    tf2::Stamped<tf2::Transform> identity(
+            tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)), tp, base_frame_id_);
     tf2::Stamped <tf2::Transform> odom_tf;
     try {
-        buffer_.transform(identity, odom_tf, odom_frame_id_);
-        //tf_->transformPose(odom_frame_id_, identity, odom_tf);
+        tf_buffer_->transform(identity, odom_tf, odom_frame_id_);
     } catch (tf2::TransformException &e) {
-        RCLCPP_WARN(nh->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
+        RCLCPP_WARN(node->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
         return;
     }
 
-    lama::Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(),
-                      tf2_ros::getYaw(odom_tf.getRotation()));
+    // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
+    // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
+    // http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Transform.html
+    // http://docs.ros.org/jade/api/tf/html/c++/Transform_8h_source.html
+    tf2::Matrix3x3 m(odom_tf.getRotation());
+    double odom_tf_roll, odom_tf_pitch, odom_tf_yaw;
+    m.getRPY(odom_tf_roll, odom_tf_pitch, odom_tf_yaw);
+    lama::Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(), odom_tf_yaw);
 
     bool update = loc2d_.enoughMotion(odom);
 
@@ -197,43 +204,55 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             cloud->points.push_back(point);
         }
 
-        loc2d_.update(cloud, odom, laser_scan->header.stamp.toSec());
+        // https://github.com/ros2/rclcpp/blob/master/rclcpp/include/rclcpp/time.hpp
+        // https://github.com/ros2/rcl_interfaces/blob/master/builtin_interfaces/msg/Time.msg
+        rclcpp::Time t(laser_scan->header.stamp);
+        loc2d_.update(cloud, odom, t.seconds());
 
         Pose2D pose = loc2d_.getPose();
         // subtracting base to odom from map to base and send map to odom instead
         tf2::Stamped <tf2::Transform> odom_to_map;
         try {
-            tf2::Transform tmp_tf(tf2_ros::createQuaternionFromYaw(pose.rotation()),
-                                      tf2::Vector3(pose.x(), pose.y(), 0));
-            tf2::Stamped <tf2::Transform> tmp_tf_stamped(tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
+            // http://docs.ros.org/diamondback/api/tf/html/c++/transform__datatypes_8h_source.html
+            // http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Quaternion.html
+            tf2::Quaternion q;
+            q.setRPY(0,0,pose.rotation());
+            tf2::Transform tmp_tf(q, tf2::Vector3(pose.x(), pose.y(), 0));
+            tf2::TimePoint tmp_tp = tf2_ros::fromMsg(laser_scan->header.stamp);
+            tf2::Stamped <tf2::Transform> tmp_tf_stamped(tmp_tf.inverse(), tmp_tp, base_frame_id_);
 
-            buffer_.transform(tmp_tf_stamped, odom_to_map, odom_frame_id_);
-            //tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
-
-
+            tf_buffer_->transform(tmp_tf_stamped, odom_to_map, odom_frame_id_);
         } catch (tf2::TransformException) {
-            RCLCPP_WARN(nh->get_logger(), "Failed to subtract base to odom transform");
+            RCLCPP_WARN(node->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
 
-        latest_tf_ = tf2::Transform(tf2_ros::Quaternion(odom_to_map.getRotation()),
-                                        tf2_ros::Point(odom_to_map.getOrigin()));
+        latest_tf_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation()),
+                                        tf2::Vector3(odom_to_map.getOrigin()));
 
         // We want to send a transform that is good up until a
         // tolerance time so that odom can be used
         rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
-        tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
-                                             transform_expiration,
-                                             global_frame_id_, odom_frame_id_);
+
+        // http://wiki.ros.org/tf2/Tutorials/Migration/DataConversions
+        // http://docs.ros.org/indigo/api/tf2_ros/html/c++/classtf2__ros_1_1TransformBroadcaster.html
+        // http://docs.ros.org/indigo/api/tf/html/c++/classtf_1_1StampedTransform.html
+        geometry_msgs::msg::TransformStamped tmp_tf_stamped;
+        tmp_tf_stamped.transform = latest_tf_.inverse();
+        tmp_tf_stamped.child_frame_id = odom_frame_id_;
+        tmp_tf_stamped.header.frame_id = global_frame_id_;
+        tmp_tf_stamped.header.stamp = transform_expiration;
+
         tfb_->sendTransform(tmp_tf_stamped);
+
     } else {
         // Nothing has change, therefore, republish the last transform.
-        rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
+        /*rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
         tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration,
                                              global_frame_id_, odom_frame_id_);
-        tfb_->sendTransform(tmp_tf_stamped);
+        tfb_->sendTransform(tmp_tf_stamped);*/
     } // end if (update)
-     */
+
 }
 
 void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg) {
@@ -285,7 +304,7 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::Occupanc
      */
 }
 
-bool lama::Loc2DROS::initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan) {
+bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
     /*
     //tf::createIdentityQuaternion()
 

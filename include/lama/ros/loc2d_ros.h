@@ -79,7 +79,7 @@ namespace lama {
 
         void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg);
 
-        bool initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
+        bool initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
 
     private:
         std::shared_ptr <rclcpp::Node> node;
@@ -97,6 +97,8 @@ namespace lama {
         std::shared_ptr <tf2_ros::TransformListener> tf_;             ///< Global transform listener.
         std::shared_ptr <tf2_ros::Buffer> tf_buffer_;
 
+        tf2::Transform latest_tf_;     ///< The most recent transform.
+
         //https://github.com/ros-planning/navigation2/blob/a05c9440e76dfd0d76f243740c143a2a1b5d7c1d/nav2_costmap_2d/src/costmap_2d_ros.cpp#L135
         //https://github.com/ros-planning/navigation2/blob/master/nav2_costmap_2d/src/costmap_2d_ros.cpp
 
@@ -109,30 +111,26 @@ namespace lama {
         // Publishers
         rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_pub_; ///< Publishers of the pose with covariance
 
-        // == Inner state ==
-        Loc2D loc2d_;
-/*
-// == ROS stuff ==
-        //rclcpp::Node nh_;  ///< Root ros node handle.
-        //rclcpp::Node pnh_; ///< Private ros node handle.
-
-        tf2_ros::Buffer latest_tf_; ///< The most recent transform.
-
-
-
-        //rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
-
         // == Laser stuff ==
         // Handle multiple lasers at once
         std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
         std::vector<bool> laser_is_reversed_;  ///< Vector that signals if the laser is reversed
         std::vector <Pose3D> lasers_origin_;  ///< Laser origin transformation
 
-
-
         // == Inner state ==
         Loc2D loc2d_;
-        Pose2D odom_;*/
+        Pose2D odom_;
+/*
+// == ROS stuff ==
+        //rclcpp::Node nh_;  ///< Root ros node handle.
+        //rclcpp::Node pnh_; ///< Private ros node handle.
+
+
+
+        //rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
+
+
+        */
     };
 
 } /* lama */

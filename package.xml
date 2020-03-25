@@ -1,22 +1,32 @@
 <?xml version="1.0"?>
-<package>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>iris_lama_ros2</name>
+  <version>0.0.0</version>
+  <description>TODO: Package description</description>
+  <maintainer email="root@todo.todo">root</maintainer>
+  <license>TODO: License declaration</license>
 
-    <name>iris_lama_ros</name>
-    <version>1.0.0</version>
-    <description>
-        ROS package of IRIS Localization and Mapping (LaMa).
-    </description>
+  <buildtool_depend>ament_cmake</buildtool_depend>
 
-    <author     email="efp@ua.pt">Eurico Pedrosa</author>
-    <maintainer email="efp@ua.pt">Eurico Pedrosa</maintainer>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
 
-    <license>BSD</license>
+  <build_depend>rclcpp</build_depend>
+  <build_depend>nav_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>tf2_geometry_msgs</build_depend>
+  <build_depend>tf2_ros</build_depend>
+  <build_depend>iris_lama</build_depend>
 
-    <buildtool_depend>catkin</buildtool_depend>
+  <exec_depend>rclcpp</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>tf2_geometry_msgs</exec_depend>
+  <exec_depend>tf2_ros</exec_depend>
+  <exec_depend>iris_lama</exec_depend>
 
-    <build_depend>iris_lama</build_depend>
-    <build_depend>rosbag_storage</build_depend>
-
-    <export />
-
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
 </package>
