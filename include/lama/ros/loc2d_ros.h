@@ -73,16 +73,18 @@ namespace lama {
 
         void onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
 
-        //bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
-        //std::shared_ptr <rclcpp::Node> nh;
+        std::shared_ptr <rclcpp::Node> node;
+
     private:
 
         void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg);
 
         bool initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
 
+        void createStampedTransform(const tf2::Transform &, const rclcpp::Time &, const std::string &,
+                                    const std::string &, geometry_msgs::msg::TransformStamped &);
+
     private:
-        std::shared_ptr <rclcpp::Node> node;
 
         // == configuration variables ==
         std::string global_frame_id_;       ///< Global frame id, usualy the map frame.
@@ -103,8 +105,8 @@ namespace lama {
         //https://github.com/ros-planning/navigation2/blob/master/nav2_costmap_2d/src/costmap_2d_ros.cpp
 
         // Subscribers
-        std::shared_ptr <message_filters::Subscriber <sensor_msgs::msg::LaserScan>> laser_scan_sub_;    ///< Subscriber to the LaserScan message.
-        std::shared_ptr <tf2_ros::MessageFilter <sensor_msgs::msg::LaserScan>> laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
+        std::shared_ptr <message_filters::Subscriber<sensor_msgs::msg::LaserScan>> laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+        std::shared_ptr <tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>> laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
 
         rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pose_sub_;
 
@@ -120,17 +122,6 @@ namespace lama {
         // == Inner state ==
         Loc2D loc2d_;
         Pose2D odom_;
-/*
-// == ROS stuff ==
-        //rclcpp::Node nh_;  ///< Root ros node handle.
-        //rclcpp::Node pnh_; ///< Private ros node handle.
-
-
-
-        //rclcpp::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
-
-
-        */
     };
 
 } /* lama */
