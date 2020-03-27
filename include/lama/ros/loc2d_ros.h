@@ -45,6 +45,10 @@
 
 #include <message_filters/subscriber.h>
 
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include "tf2/transform_datatypes.h"
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+
 // Pose publishing
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
 // Laser message
@@ -81,8 +85,18 @@ namespace lama {
 
         bool initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
 
-        void createStampedTransform(const tf2::Transform &, const rclcpp::Time &, const std::string &,
-                                    const std::string &, geometry_msgs::msg::TransformStamped &);
+
+        // Auxiliary functions
+        geometry_msgs::msg::TransformStamped createTransformStamped(
+                const tf2::Transform &, const rclcpp::Time &, const std::string &, const std::string &);
+        geometry_msgs::msg::PoseStamped createPoseStamped(
+                const tf2::Transform &, const rclcpp::Time &, const std::string &);
+        geometry_msgs::msg::Vector3Stamped createVector3Stamped(
+                const tf2::Vector3 &, const rclcpp::Time &, const std::string &);
+        tf2::Stamped <tf2::Transform> createStampedTransform(
+                const geometry_msgs::msg::PoseStamped &);
+        tf2::Stamped <tf2::Vector3> createStampedVector3(
+                const geometry_msgs::msg::Vector3Stamped &);
 
     private:
 
