@@ -305,7 +305,6 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     tf2::Vector3 v;
     v.setValue(0, 0, 1 + laser_origin.getOrigin().z());
 
-
     geometry_msgs::msg::Vector3Stamped msg_up;
     try {
         geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = lama_utils::createVector3Stamped(

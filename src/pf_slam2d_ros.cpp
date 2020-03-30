@@ -31,25 +31,12 @@
  *
  */
 
-//#include <rosbag/bag.h>
-//#include <rosbag/view.h>
-
-#include "nav_msgs/msg/path.hpp"
-//#include <nav_msgs/path.h>
-//#include <geometry_msgs/PoseStamped.h>
-#include "geometry_msgs/msg/pose_stamped.hpp"
-
-#include <lama/image.h>
-
 #include "lama/ros/pf_slam2d_ros.h"
-#include "lama/ros/offline_replay.h"
-
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
 lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
         transform_tolerance_(0, 100000000) {
     node = rclcpp::Node::make_shared(name);
-    ros_clock = std::make_shared<rclcpp::Clock>(RCL_ROS_TIME);
+    ros_clock = node->get_clock();
 
     // Load parameters from the server.
     double tmp;
@@ -203,8 +190,7 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
     }
     tf2::Stamped <tf2::Transform> odom_tf = lama_utils::createStampedTransform(msg_odom_tf);
 
-    Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(),
-                lama_utils::getYaw(odom_tf.getRotation()));
+    Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(), lama_utils::getYaw(odom_tf.getRotation()));
 
     bool update;
 

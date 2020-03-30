@@ -38,96 +38,100 @@
 
 #include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
-lama::Slam2DROS::Slam2DROS(string name)
-        : pnh_("~") //nh_(),
-{
-    nh = rclcpp::Node::make_shared(name);
-    ros_clock(RCL_ROS_TIME);
+lama::Slam2DROS::Slam2DROS(std::string name) :
+        transform_tolerance_(0, 100000000) {
+    node = rclcpp::Node::make_shared(name);
+    ros_clock = node->get_clock();
 
     // Load parameters from the server.
     double tmp;
-
-    pnh_.param("global_frame_id", global_frame_id_, std::string("/map"));
-    pnh_.param("odom_frame_id", odom_frame_id_, std::string("/odom"));
-    pnh_.param("base_frame_id", base_frame_id_, std::string("/base_link"));
-
-    pnh_.param("scan_topic", scan_topic_, std::string("/scan"));
-
-    pnh_.param("transform_tolerance", tmp, 0.1);
-    transform_tolerance_.fromSec(tmp);
+    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("/map"));
+    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("/base_link"));
+    node->get_parameter_or("scan_topic", scan_topic_, std::string("/scan"));
+    node->get_parameter_or("transform_tolerance", tmp, 0.1);
+    transform_tolerance_ = rclcpp::Duration::from_seconds(tmp);
 
     Vector2d pos;
-    pnh_.param("initial_pos_x", pos[0], 0.0);
-    pnh_.param("initial_pos_y", pos[1], 0.0);
-    pnh_.param("initial_pos_a", tmp, 0.0);
+    node->get_parameter_or("initial_pos_x", pos[0], 0.0);
+    node->get_parameter_or("initial_pos_y", pos[1], 0.0);
+    node->get_parameter_or("initial_pos_a", tmp, 0.0);
     Pose2D prior(pos, tmp);
 
     Slam2D::Options options;
-    pnh_.param("d_thresh", options.trans_thresh, 0.01);
-    pnh_.param("a_thresh", options.rot_thresh, 0.25);
-    pnh_.param("l2_max", options.l2_max, 0.5);
-    pnh_.param("truncate", options.truncated_ray, 0.0);
-    pnh_.param("resolution", options.resolution, 0.05);
-    pnh_.param("strategy", options.strategy, std::string("gn"));
-    pnh_.param("use_compression", options.use_compression, false);
-    pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4"));
-    pnh_.param("mrange", max_range_, 16.0);
+    node->get_parameter_or("d_thresh", options.trans_thresh, 0.01);
+    node->get_parameter_or("a_thresh", options.rot_thresh, 0.25);
+    node->get_parameter_or("l2_max", options.l2_max, 0.5);
+    node->get_parameter_or("truncate", options.truncated_ray, 0.0);
+    node->get_parameter_or("resolution", options.resolution, 0.05);
+    node->get_parameter_or("strategy", options.strategy, std::string("gn"));
+    node->get_parameter_or("use_compression", options.use_compression, false);
+    node->get_parameter_or("compression_algorithm", options.calgorithm, std::string("lz4"));
+    node->get_parameter_or("mrange", max_range_, 16.0);
 
     int itmp;
-    pnh_.param("max_iterations", itmp, 100);
+    node->get_parameter_or("max_iterations", itmp, 100);
     options.max_iter = itmp;
-    pnh_.param("patch_size", itmp, 32);
+    node->get_parameter_or("patch_size", itmp, 32);
     options.patch_size = itmp;
-    pnh_.param("cache_size", itmp, 100);
+    node->get_parameter_or("cache_size", itmp, 100);
     options.cache_size = itmp;
 
-    pnh_.param("create_summary", options.create_summary, false);
+    node->get_parameter_or("create_summary", options.create_summary, false);
 
-    pnh_.param("map_publish_period", tmp, 5.0);
-    //periodic_publish_ = nh_.createTimer(ros::Duration(tmp), &Slam2DROS::publishCallback, this);
-    periodic_publish_ = nh->create_wall_timer(rclcpp::Duration(tmp), std::bind(&Slam2DROS::publishCallback,
-                                                                               this)); //TODO https://docs.ros2.org/beta3/api/rclcpp/classrclcpp_1_1node_1_1Node.html
+    //periodic_publish_ = nh->create_wall_timer(rclcpp::Duration(tmp), std::bind(&Slam2DROS::publishCallback, this));
+    // https://docs.ros2.org/beta3/api/rclcpp/classrclcpp_1_1node_1_1Node.html
+    node->get_parameter_or("map_publish_period", tmp, 5.0);
+    periodic_publish_ = node->create_wall_timer(
+            std::chrono::duration_cast<std::chrono::nanoseconds>(
+                    std::chrono::milliseconds(static_cast<int>(tmp * 1000))),
+            std::bind(&Slam2DROS::publishCallback, this));
 
-    slam2d_ = new Slam2D(options);
+    slam2d_ = std::make_shared<Slam2D>(options);
     slam2d_->setPose(prior);
 
     // Setup TF workers ...
-    tf_ = new tf2_ros::TransformListener(pnh_, rclcpp::Duration(30));
-    tfb_ = new tf2_ros::TransformBroadcaster();
+    tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock(), tf2::Duration(30));
+    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
+            node->get_node_base_interface(),
+            node->get_node_timers_interface());
+    tf_buffer_->setCreateTimerInterface(timer_interface);
+    tf_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
+    tfb_ = std::make_shared<tf2_ros::TransformBroadcaster>(node);
 
     // Syncronized LaserScan messages with odometry transforms. This ensures that an odometry transformation
     // exists when the handler of a LaserScan message is called.
-    laser_scan_sub_ = new message_filters::Subscriber<sensor_msgs::msg::LaserScan>(*nh, scan_topic_, 100);
-    laser_scan_filter_ = new tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>(*laser_scan_sub_, *tf_, odom_frame_id_,
-                                                                                 100);
-    laser_scan_filter_->registerCallback(boost::bind(&Slam2DROS::onLaserScan, this, _1));
+    laser_scan_sub_ = std::make_shared < message_filters::Subscriber < sensor_msgs::msg::LaserScan >> (
+            node, scan_topic_, rclcpp::QoS(rclcpp::KeepLast(100)).get_rmw_qos_profile());
+    laser_scan_filter_ = std::make_shared < tf2_ros::MessageFilter < sensor_msgs::msg::LaserScan >> (
+            *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
+                    node->get_node_logging_interface(), node->get_node_clock_interface());
+    laser_scan_filter_->registerCallback(std::bind(&Slam2DROS::onLaserScan, this, std::placeholders::_1));
 
     // Setup publishers
-    // TODO latch
-    pose_pub_ = nh->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/pose", 2);
-    map_pub_ = nh->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", 1);
-    dist_pub_ = nh->create_publisher<nav_msgs::msg::OccupancyGrid>("/distance", 1);
-
-    /*pose_pub_ = nh_.advertise<geometry_msgs::msg::PoseWithCovarianceStamped>("pose", 2);
-    map_pub_  = nh_.advertise<nav_msgs::msg::OccupancyGrid>("map",      1, true);
-    dist_pub_ = nh_.advertise<nav_msgs::msg::OccupancyGrid>("distance", 1, true);*/
+    // TODO latch https://github.com/ros2/ros2/issues/464
+    pose_pub_ = node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/pose", 2);
+    map_pub_ = node->create_publisher<nav_msgs::msg::OccupancyGrid>("/map", 1); // latch=true
+    dist_pub_ = node->create_publisher<nav_msgs::msg::OccupancyGrid>("/distance", 1); // latch=true
 
     ros_occ_.header.frame_id = global_frame_id_;
     ros_cost_.header.frame_id = global_frame_id_;
 
     // Setup service
-    ss_ = nh->advertiseService("dynamic_map", &Slam2DROS::onGetMap, this);
+    // https://index.ros.org/doc/ros2/Tutorials/Writing-A-Simple-Cpp-Service-And-Client/#write-the-service-node
+    // https://answers.ros.org/question/299126/ros2-error-creating-a-service-server-as-a-member-function/
+    service = node->create_service<nav_msgs::srv::GetMap>("dynamic_map",
+                                                          std::bind(&Slam2DROS::onGetMap, this, std::placeholders::_1,
+                                                                    std::placeholders::_2));
 
-    RCLCPP_INFO(nh->get_logger(), "Online SLAM node up and running");
+    RCLCPP_INFO(node->get_logger(), "Online SLAM node up and running");
 }
 
 lama::Slam2DROS::~Slam2DROS() {
-    delete laser_scan_filter_;
-    delete laser_scan_sub_;
-    delete slam2d_;
+
 }
 
-void lama::Slam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan) {
+void lama::Slam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
     int laser_index = -1;
 
     // verify if it is from a known source
@@ -141,18 +145,19 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr l
     }
 
     // Where was the robot at the time of the scan ?
-    tf2::Stamped <tf2_ros::Pose> identity(
-            tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2::Vector3(0, 0, 0)),
-            laser_scan->header.stamp, base_frame_id_);
-    tf2::Stamped <tf2_ros::Pose> odom_tf;
-    try { tf_->transformPose(odom_frame_id_, identity, odom_tf); }
-    catch (tf2_ros::TransformException &e) {
-        RCLCPP_WARN(nh->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
+    geometry_msgs::msg::PoseStamped msg_odom_tf;
+    try {
+        geometry_msgs::msg::PoseStamped msg_identity = lama_utils::createPoseStamped(
+                tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
+                rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
+        tf_buffer_->transform(msg_identity, msg_odom_tf, odom_frame_id_);
+    } catch (tf2::TransformException &e) {
+        RCLCPP_WARN(node->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
         return;
     }
+    tf2::Stamped <tf2::Transform> odom_tf = lama_utils::createStampedTransform(msg_odom_tf);
 
-    Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(),
-                tf2_ros::getYaw(odom_tf.getRotation()));
+    Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(), lama_utils::getYaw(odom_tf.getRotation()));
 
     bool update = slam2d_->enoughMotion(odom);
 
@@ -200,96 +205,109 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr l
             cloud->points.push_back(point);
         }
 
-        slam2d_->update(cloud, odom, laser_scan->header.stamp.toSec());
-
+        slam2d_->update(cloud, odom, rclcpp::Time(laser_scan->header.stamp).seconds());
         Pose2D pose = slam2d_->getPose();
-        // subtracting base to odom from map to base and send map to odom instead
-        tf2::Stamped <tf2_ros::Pose> odom_to_map;
-        try {
-            tf2_ros::Transform tmp_tf(tf2_ros::createQuaternionFromYaw(pose.rotation()),
-                                      tf2::Vector3(pose.x(), pose.y(), 0));
-            tf2::Stamped <tf2_ros::Pose> tmp_tf_stamped(tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
-            tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
 
-        } catch (tf2_ros::TransformException) {
-            RCLCPP_WARN(nh->get_logger(), "Failed to subtract base to odom transform");
+        // subtracting base to odom from map to base and send map to odom instead
+        geometry_msgs::msg::PoseStamped msg_odom_to_map;
+        try {
+            tf2::Quaternion q;
+            q.setRPY(0, 0, pose.rotation());
+            geometry_msgs::msg::PoseStamped msg_odom_to_map_baseFrame = lama_utils::createPoseStamped(
+                    tf2::Transform(q, tf2::Vector3(pose.x(), pose.y(), 0)).inverse(),
+                    rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
+            tf_buffer_->transform(msg_odom_to_map_baseFrame, msg_odom_to_map, odom_frame_id_);
+        } catch (tf2::TransformException &e) {
+            RCLCPP_WARN(node->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
+        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_tf);
 
-        latest_tf_ = tf2_ros::Transform(tf2_ros::Quaternion(odom_to_map.getRotation()),
-                                        tf2_ros::Point(odom_to_map.getOrigin()));
+        latest_tf_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation()),
+                                        tf2::Vector3(odom_to_map.getOrigin()));
 
         // We want to send a transform that is good up until a
         // tolerance time so that odom can be used
-        rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
-        tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(),
-                                                 transform_expiration,
-                                                 global_frame_id_, odom_frame_id_);
+        rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
+        geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
+                latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } else {
         // Nothing has change, therefore, republish the last transform.
-        rclcpp::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
-        tf2::StampedTransform tmp_tf_stamped(latest_tf_.inverse(), transform_expiration,
-                                                 global_frame_id_, odom_frame_id_);
+        rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
+        geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
+                latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
+
 }
 
-bool lama::Slam2DROS::initLaser(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan) {
+bool lama::Slam2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
+
     // find the origin of the sensor in the base frame
-    tf2::Stamped <tf2_ros::Pose> identity(
-            tf2_ros::Transform(tf2_ros::createIdentityQuaternion(), tf2::Vector3(0, 0, 0)),
-            rclcpp::Time(), laser_scan->header.frame_id);
-    tf2::Stamped <tf2_ros::Pose> laser_origin;
-    try { tf_->transformPose(base_frame_id_, identity, laser_origin); }
-    catch (tf2_ros::TransformException &e) {
-        RCLCPP_ERROR(nh->get_logger(), "Could not find origin of %s", laser_scan->header.frame_id.c_str());
+    geometry_msgs::msg::PoseStamped msg_laser_origin;
+    try {
+        geometry_msgs::msg::PoseStamped msg_identity = lama_utils::createPoseStamped(
+                tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
+                rclcpp::Time(), laser_scan->header.frame_id);
+        tf_buffer_->transform(msg_identity, msg_laser_origin, base_frame_id_);
+    } catch (tf2::TransformException &e) {
+        RCLCPP_ERROR(node->get_logger(), "Could not find origin of %s", laser_scan->header.frame_id.c_str());
         return false;
     }
+    tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
 
     // Validate laser orientation (code taken from slam_gmapping)
     // create a point 1m above the laser position and transform it into the laser-frame
     tf2::Vector3 v;
     v.setValue(0, 0, 1 + laser_origin.getOrigin().z());
-    tf2::Stamped <tf2::Vector3> up(v, laser_scan->header.stamp, base_frame_id_);
+
+    geometry_msgs::msg::Vector3Stamped msg_up;
     try {
-        tf_->transformPoint(laser_scan->header.frame_id, up, up);
-        RCLCPP_DEBUG(nh->get_logger(), "Z-Axis in sensor frame: %.3f", up.z());
-    } catch (tf2_ros::TransformException &e) {
-        RCLCPP_ERROR(nh->get_logger(), "Unable to determine orientation of laser: %s", e.what());
+        geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = lama_utils::createVector3Stamped(
+                v, rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
+        tf_buffer_->transform(msg_up_baseFrame, msg_up, laser_scan->header.frame_id);
+        RCLCPP_DEBUG(node->get_logger(), "Z-Axis in sensor frame: %.3f", msg_up.vector.z);
+    } catch (tf2::TransformException &e) {
+        RCLCPP_ERROR(node->get_logger(), "Unable to determine orientation of laser: %s", e.what());
         return false;
     }
+    tf2::Stamped <tf2::Vector3> up = lama_utils::createStampedVector3(msg_up);
+
 
     // we do not take roll or pitch into account. So check for correct sensor alignment.
     if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
-        RCLCPP_WARN(nh->get_logger(), "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f",
-                    up.z());
+        RCLCPP_WARN(node->get_logger(),
+                "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
         return false;
     }
+
+    double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
 
     if (up.z() > 0) {
         laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
 
         Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  0, 0, tf2_ros::getYaw(laser_origin.getRotation()));
+                  0, 0, laser_origin_yaw);
 
         lasers_origin_.push_back(lp);
-        RCLCPP_INFO(nh->get_logger(), "Laser is mounted upwards.");
+        RCLCPP_INFO(node->get_logger(), "Laser is mounted upwards.");
     } else {
         laser_is_reversed_.push_back(laser_scan->angle_min < laser_scan->angle_max);
 
         Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  M_PI, 0, tf2_ros::getYaw(laser_origin.getRotation()));
+                  M_PI, 0, laser_origin_yaw);
 
         lasers_origin_.push_back(lp);
-        RCLCPP_INFO(nh->get_logger(), "Laser is mounted upside down.");
+        RCLCPP_INFO(node->get_logger(), "Laser is mounted upside down.");
     }
 
     int laser_index = (int) frame_to_laser_.size();  // simple ID generator :)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
 
-    RCLCPP_INFO(nh->get_logger(), "New laser configured (id=%d frame_id=%s)", laser_index,
+    RCLCPP_INFO(node->get_logger(), "New laser configured (id=%d frame_id=%s)", laser_index,
                 laser_scan->header.frame_id.c_str());
+
     return true;
 }
 
@@ -392,7 +410,7 @@ bool lama::Slam2DROS::DistanceMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid &
 }
 
 void lama::Slam2DROS::publishCallback() {  // const rclcpp::TimerEvent &
-    auto time = ros_clock.now(); //rclcpp::Time::now();
+    auto time = ros_clock->now(); //rclcpp::Time::now();
     if (map_pub_->get_subscription_count() > 0) {
         OccupancyMsgFromOccupancyMap(ros_occ_);
         ros_occ_.header.stamp = time;
@@ -406,17 +424,16 @@ void lama::Slam2DROS::publishCallback() {  // const rclcpp::TimerEvent &
     }
 }
 
-bool lama::Slam2DROS::onGetMap(nav_msgs::srv::GetMap::Request &req, nav_msgs::srv::GetMap::Response &res) {
-    res.map.header.frame_id = global_frame_id_;
-    res.map.header.stamp = ros_clock.now(); //rclcpp::Time::now();
+void lama::Slam2DROS::onGetMap(const std::shared_ptr <nav_msgs::srv::GetMap::Request> req,
+                                 std::shared_ptr <nav_msgs::srv::GetMap::Response> res) {
+    res->map.header.frame_id = global_frame_id_;
+    res->map.header.stamp = ros_clock->now();
 
-    OccupancyMsgFromOccupancyMap(res.map);
-
-    return true;
+    OccupancyMsgFromOccupancyMap(res->map);
 }
 
 void lama::Slam2DROS::publishMaps() {
-    auto time = ros_clock.now(); //rclcpp::Time::now();
+    auto time = ros_clock->now(); //rclcpp::Time::now();
 
     OccupancyMsgFromOccupancyMap(ros_occ_);
     ros_occ_.header.stamp = time;
@@ -435,7 +452,8 @@ void lama::Slam2DROS::printSummary() {
 int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
     lama::Slam2DROS slam2d_ros{"slam2d_ros"};
-
+    RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
+/*
     rclcpp::Node pnh("~");
     std::string rosbag_filename;
 
@@ -451,9 +469,9 @@ int main(int argc, char *argv[]) {
         RCLCPP_INFO(pnh.get_logger(), "You can now save your map. Use ctrl-c to quit.");
         // publish the maps a last time
         slam2d_ros.publishMaps();
-    }
+    }*/
 
-    rclcpp::spin(slam2d_ros.nh);
+    rclcpp::spin(slam2d_ros.node);
     return 0;
 }
 

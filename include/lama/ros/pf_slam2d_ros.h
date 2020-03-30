@@ -62,6 +62,14 @@
 #include <lama/pose3d.h>
 #include <lama/pf_slam2d.h>
 
+#include "nav_msgs/msg/path.hpp"
+#include "geometry_msgs/msg/pose_stamped.hpp"
+
+#include <lama/image.h>
+
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+
+
 namespace lama {
 
 class PFSlam2DROS {
