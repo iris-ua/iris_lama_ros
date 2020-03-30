@@ -62,6 +62,13 @@
 #include <lama/sdm/simple_occupancy_map.h>
 #include <lama/sdm/dynamic_distance_map.h>
 
+#include "nav_msgs/srv/get_map.hpp"
+
+#include "lama/ros/lama_utils.h"
+#include "lama/time.h"
+#include <tf2/convert.h>
+#include <tf2_ros/buffer_interface.h>
+
 namespace lama {
 
     class Loc2DROS {
@@ -84,19 +91,6 @@ namespace lama {
         void InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg);
 
         bool initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
-
-
-        // Auxiliary functions
-        geometry_msgs::msg::TransformStamped createTransformStamped(
-                const tf2::Transform &, const rclcpp::Time &, const std::string &, const std::string &);
-        geometry_msgs::msg::PoseStamped createPoseStamped(
-                const tf2::Transform &, const rclcpp::Time &, const std::string &);
-        geometry_msgs::msg::Vector3Stamped createVector3Stamped(
-                const tf2::Vector3 &, const rclcpp::Time &, const std::string &);
-        tf2::Stamped <tf2::Transform> createStampedTransform(
-                const geometry_msgs::msg::PoseStamped &);
-        tf2::Stamped <tf2::Vector3> createStampedVector3(
-                const geometry_msgs::msg::Vector3Stamped &);
 
     private:
 

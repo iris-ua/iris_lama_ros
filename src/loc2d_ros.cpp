@@ -32,13 +32,7 @@
  */
 
 //#include <nav_msgs/GetMap.h>
-#include "nav_msgs/srv/get_map.hpp"
-
 #include "lama/ros/loc2d_ros.h"
-#include "lama/time.h"
-
-#include <tf2/convert.h>
-#include <tf2_ros/buffer_interface.h>
 
 lama::Loc2DROS::Loc2DROS(const std::string &name) :
         transform_tolerance_(0, 100000000) {
@@ -110,13 +104,7 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::msg::PoseWithCovarianceS
     float x = initial_pose->pose.pose.position.x;
     float y = initial_pose->pose.pose.position.y;
 
-    // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
-    // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
-    tf2::Quaternion q;
-    tf2::convert(initial_pose->pose.pose.orientation, q);
-    tf2::Matrix3x3 m(q);
-    double initial_pose_roll, initial_pose_pitch, initial_pose_yaw;
-    m.getRPY(initial_pose_roll, initial_pose_pitch, initial_pose_yaw);
+    double initial_pose_yaw = lama_utils::getYaw(initial_pose->pose.pose.orientation);
 
     RCLCPP_INFO(node->get_logger(), "Setting pose to (%f, %f, %f)", x, y, initial_pose_yaw);
     lama::Pose2D pose(x, y, initial_pose_yaw);
@@ -146,7 +134,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
     // http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html
     geometry_msgs::msg::PoseStamped msg_odom_tf;
     try {
-        geometry_msgs::msg::PoseStamped msg_odom_tf_baseFrame = Loc2DROS::createPoseStamped(
+        geometry_msgs::msg::PoseStamped msg_odom_tf_baseFrame = lama_utils::createPoseStamped(
                 tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
                 rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
         tf_buffer_->transform(msg_odom_tf_baseFrame, msg_odom_tf, odom_frame_id_);
@@ -154,15 +142,9 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         RCLCPP_WARN(node->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
         return;
     }
-    tf2::Stamped <tf2::Transform> odom_tf = Loc2DROS::createStampedTransform(msg_odom_tf);
+    tf2::Stamped <tf2::Transform> odom_tf = lama_utils::createStampedTransform(msg_odom_tf);
 
-    // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
-    // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
-    // http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Transform.html
-    // http://docs.ros.org/jade/api/tf/html/c++/Transform_8h_source.html
-    tf2::Matrix3x3 m(odom_tf.getRotation());
-    double odom_tf_roll, odom_tf_pitch, odom_tf_yaw;
-    m.getRPY(odom_tf_roll, odom_tf_pitch, odom_tf_yaw);
+    double odom_tf_yaw = lama_utils::getYaw(odom_tf.getRotation());
     lama::Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(), odom_tf_yaw);
 
     bool update = loc2d_.enoughMotion(odom);
@@ -220,7 +202,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             // http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Quaternion.html
             tf2::Quaternion q;
             q.setRPY(0, 0, pose.rotation());
-            geometry_msgs::msg::PoseStamped msg_odom_to_map_baseFrame = Loc2DROS::createPoseStamped(
+            geometry_msgs::msg::PoseStamped msg_odom_to_map_baseFrame = lama_utils::createPoseStamped(
                     tf2::Transform(q, tf2::Vector3(pose.x(), pose.y(), 0)),
                     rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
             tf_buffer_->transform(msg_odom_to_map_baseFrame, msg_odom_to_map, odom_frame_id_);
@@ -228,7 +210,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             RCLCPP_WARN(node->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
-        tf2::Stamped <tf2::Transform> odom_to_map = Loc2DROS::createStampedTransform(msg_odom_to_map);
+        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_to_map);
 
         latest_tf_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation()),
                                     tf2::Vector3(odom_to_map.getOrigin()));
@@ -242,108 +224,18 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         // http://docs.ros.org/indigo/api/tf2_ros/html/c++/classtf2__ros_1_1TransformBroadcaster.html
         // http://docs.ros.org/indigo/api/tf/html/c++/classtf_1_1StampedTransform.html
         // https://answers.ros.org/question/347582/how-to-efficiently-get-transformstamped-in-eloquent/
-        geometry_msgs::msg::TransformStamped tmp_tf_stamped = Loc2DROS::createTransformStamped(
+        geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
 
     } else {
         // Nothing has change, therefore, republish the last transform.
         rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
-        geometry_msgs::msg::TransformStamped tmp_tf_stamped = Loc2DROS::createTransformStamped(
+        geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
 
-}
-
-geometry_msgs::msg::TransformStamped lama::Loc2DROS::createTransformStamped(const tf2::Transform &myTransform,
-                                                                            const rclcpp::Time &myTime,
-                                                                            const std::string &global_frame,
-                                                                            const std::string &child_frame) {
-    // this is better but requires a tf2::TimePoint
-    // https://github.com/ros2/geometry2/blob/72b5b179df1818a81290631cb20578e279bffcb3/tf2_geometry_msgs/include/tf2_geometry_msgs/tf2_geometry_msgs.h#L510
-    // geometry_msgs::msg::TransformStamped msg2 =
-    //    tf2::toMsg(tf2::Stamped<tf2::Transform>(myTransform, tf2::TimePoint(), global_frame));
-    // msg.child_frame_id = child_frame;
-
-    geometry_msgs::msg::TransformStamped msg;
-    msg.transform.translation.x = myTransform.getOrigin().x();
-    msg.transform.translation.y = myTransform.getOrigin().y();
-    msg.transform.translation.z = myTransform.getOrigin().z();
-    msg.transform.rotation.x = myTransform.getRotation().x();
-    msg.transform.rotation.y = myTransform.getRotation().y();
-    msg.transform.rotation.z = myTransform.getRotation().z();
-    msg.transform.rotation.w = myTransform.getRotation().w();
-    msg.child_frame_id = child_frame;
-    msg.header.frame_id = global_frame;
-    msg.header.stamp = myTime;
-
-    return msg;
-}
-
-geometry_msgs::msg::PoseStamped
-lama::Loc2DROS::createPoseStamped(const tf2::Transform &myTransform, const rclcpp::Time &myTime,
-                                  const std::string &global_frame) {
-    geometry_msgs::msg::PoseStamped msg;
-
-    msg.pose.position.x = myTransform.getOrigin().x();
-    msg.pose.position.y = myTransform.getOrigin().y();
-    msg.pose.position.z = myTransform.getOrigin().z();
-    msg.pose.orientation.x = myTransform.getRotation().x();
-    msg.pose.orientation.y = myTransform.getRotation().y();
-    msg.pose.orientation.z = myTransform.getRotation().z();
-    msg.pose.orientation.w = myTransform.getRotation().w();
-    msg.header.frame_id = global_frame;
-    msg.header.stamp = myTime;
-
-    return msg;
-}
-
-
-geometry_msgs::msg::Vector3Stamped lama::Loc2DROS::createVector3Stamped(const tf2::Vector3 &myVector,
-                                                                        const rclcpp::Time &myTime,
-                                                                        const std::string &global_frame) {
-    geometry_msgs::msg::Vector3Stamped msg;
-
-    msg.vector.x = myVector.x();
-    msg.vector.y = myVector.y();
-    msg.vector.z = myVector.z();
-    msg.header.frame_id = global_frame;
-    msg.header.stamp = myTime;
-
-    return msg;
-}
-
-tf2::Stamped <tf2::Transform> lama::Loc2DROS::createStampedTransform(
-        const geometry_msgs::msg::PoseStamped &myPoseStamped) {
-    // Should we use geometry_msgs::msg::TransformStamped?
-    // tf2::Stamped <tf2::Transform> converted2;
-    // fromMsg(myPoseStamped, converted2);
-
-    // https://answers.ros.org/question/261419/tf2-transformpose-in-c/
-
-    tf2::Stamped <tf2::Transform> converted(
-            tf2::Transform(
-                    tf2::Quaternion(myPoseStamped.pose.orientation.x, myPoseStamped.pose.orientation.y,
-                                    myPoseStamped.pose.orientation.z, myPoseStamped.pose.orientation.w),
-                    tf2::Vector3(myPoseStamped.pose.position.x, myPoseStamped.pose.position.y,
-                                 myPoseStamped.pose.position.z)),
-            tf2_ros::fromMsg(myPoseStamped.header.stamp), myPoseStamped.header.frame_id);
-    return converted;
-}
-
-tf2::Stamped <tf2::Vector3> lama::Loc2DROS::createStampedVector3(
-        const geometry_msgs::msg::Vector3Stamped &myVectorStamped) {
-    // TODO why doesnt this work....
-    // http://wiki.ros.org/tf2/Tutorials/Migration/DataConversions
-    // geometry_msgs::msg::Vector3Stamped m;
-    // tf2::convert(up, m);
-    // no matching function for call to ‘toMsg(const tf2::Stamped<tf2::Vector3>&)
-
-    tf2::Stamped <tf2::Vector3> converted(
-            tf2::Vector3(myVectorStamped.vector.x, myVectorStamped.vector.y, myVectorStamped.vector.z),
-            tf2_ros::fromMsg(myVectorStamped.header.stamp), myVectorStamped.header.frame_id);
-    return converted;
 }
 
 void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg) {
@@ -398,7 +290,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     // find the origin of the sensor in the base frame
     geometry_msgs::msg::PoseStamped msg_laser_origin;
     try {
-        geometry_msgs::msg::PoseStamped msg_laser_origin_baseFrame = Loc2DROS::createPoseStamped(
+        geometry_msgs::msg::PoseStamped msg_laser_origin_baseFrame = lama_utils::createPoseStamped(
                 tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
                 rclcpp::Time(), laser_scan->header.frame_id);
         tf_buffer_->transform(msg_laser_origin_baseFrame, msg_laser_origin, odom_frame_id_);
@@ -406,7 +298,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
         RCLCPP_ERROR(node->get_logger(), "Could not find origin of %s", laser_scan->header.frame_id.c_str());
         return false;
     }
-    tf2::Stamped <tf2::Transform> laser_origin = Loc2DROS::createStampedTransform(msg_laser_origin);
+    tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
 
     // Validate laser orientation (code taken from slam_gmapping)
     // create a point 1m above the laser position and transform it into the laser-frame
@@ -416,7 +308,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
 
     geometry_msgs::msg::Vector3Stamped msg_up;
     try {
-        geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = Loc2DROS::createVector3Stamped(
+        geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = lama_utils::createVector3Stamped(
                 v, rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
         tf_buffer_->transform(msg_up_baseFrame, msg_up, laser_scan->header.frame_id);
         RCLCPP_DEBUG(node->get_logger(), "Z-Axis in sensor frame: %.3f", msg_up.vector.z);
@@ -424,7 +316,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
         RCLCPP_ERROR(node->get_logger(), "Unable to determine orientation of laser: %s", e.what());
         return false;
     }
-    tf2::Stamped <tf2::Vector3> up = Loc2DROS::createStampedVector3(msg_up);
+    tf2::Stamped <tf2::Vector3> up = lama_utils::createStampedVector3(msg_up);
 
     // we do not take roll or pitch into account. So check for correct sensor alignment.
     if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
@@ -433,9 +325,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
         return false;
     }
 
-    tf2::Matrix3x3 matrix3x3(laser_origin.getRotation());
-    tf2Scalar useless_pitch, useless_roll, laser_origin_yaw;
-    matrix3x3.getRPY(useless_pitch, useless_roll, laser_origin_yaw);
+    double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
 
     if (up.z() > 0) {
         laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);

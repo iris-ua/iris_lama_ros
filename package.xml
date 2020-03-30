@@ -19,6 +19,13 @@
   <build_depend>tf2_ros</build_depend>
   <build_depend>iris_lama</build_depend>
 
+  <build_depend>tf2</build_depend>
+  <exec_depend>tf2</exec_depend>
+  <build_depend>tf2_msgs</build_depend>
+  <exec_depend>tf2_msgs</exec_depend>
+  <build_depend>tf2_sensor_msgs</build_depend>
+  <exec_depend>tf2_sensor_msgs</exec_depend>
+
   <exec_depend>rclcpp</exec_depend>
   <exec_depend>nav_msgs</exec_depend>
   <exec_depend>geometry_msgs</exec_depend>

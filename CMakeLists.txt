@@ -31,6 +31,13 @@ find_package(message_filters REQUIRED)
 find_package(visualization_msgs REQUIRED)
 find_package(rosbag2 REQUIRED) #rosbag_storage
 
+find_package(tf2 REQUIRED)
+find_package(tf2_msgs REQUIRED)
+find_package(tf2_sensor_msgs REQUIRED)
+#find_package(tf2_bullet REQUIRED)
+#find_package(tf2_kdl REQUIRED)
+#find_package(tf2_tools REQUIRED)
+
 find_package(iris_lama REQUIRED)
 
 

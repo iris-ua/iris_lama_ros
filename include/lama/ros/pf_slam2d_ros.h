@@ -40,6 +40,7 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_ros/message_filter.h>
+#include "tf2_ros/create_timer_ros.h"
 
 #include <message_filters/subscriber.h>
 
@@ -57,6 +58,7 @@
 //#include <nav_msgs/GetMap.h>
 #include "nav_msgs/srv/get_map.hpp"
 
+#include "lama/ros/lama_utils.h"
 #include <lama/pose3d.h>
 #include <lama/pf_slam2d.h>
 
@@ -68,15 +70,14 @@ public:
     PFSlam2DROS(std::string name);
     ~PFSlam2DROS();
 
-    void onLaserScan(const sensor_msgs::msg::LaserScan::SharedPtr laser_scan);
-    // TODO change signature https://github.com/ros2/examples/blob/master/rclcpp/minimal_service/main.cpp
-    bool onGetMap(nav_msgs::srv::GetMap::Request &req, nav_msgs::srv::GetMap::Response &res);
+    void onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
+    void onGetMap(const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
+                  std::shared_ptr<nav_msgs::srv::GetMap::Response> res);
     void publishMaps();
 
     void printSummary();
 
-    std::shared_ptr<rclcpp::Node> nh;
-
+    std::shared_ptr <rclcpp::Node> node;
 private:
     bool OccupancyMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid& msg);
     bool DistanceMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid& msg);
@@ -85,19 +86,21 @@ private:
 private:
 
     // == ROS stuff ==
-    rclcpp::Node nh_;  ///< Root ros node handle.
-    rclcpp::Node pnh_; ///< Private ros node handle.
+    //rclcpp::Node nh_;  ///< Root ros node handle.
+    //rclcpp::Node pnh_; ///< Private ros node handle.
 
-    rclcpp::Clock ros_clock;
-    rclcpp::Timer periodic_publish_; /// timer user to publish periodically the maps
+    std::shared_ptr <rclcpp::Clock> ros_clock;
+    rclcpp::TimerBase::SharedPtr periodic_publish_;     /// timer user to publish periodically the maps
 
-    tf2_ros::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
-    tf2_ros::TransformListener*    tf_;  ///< Gloabal transform listener.
+    std::shared_ptr <tf2_ros::TransformBroadcaster> tfb_;         ///< Position transform broadcaster.
+    std::shared_ptr <tf2_ros::TransformListener> tf_;             ///< Global transform listener.
+    std::shared_ptr <tf2_ros::Buffer> tf_buffer_;
 
-    tf2_ros::Buffer latest_tf_; ///< The most recent transform.
+    tf2::Transform latest_tf_;     ///< The most recent transform.
 
-    tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>*           laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
-    message_filters::Subscriber<sensor_msgs::msg::LaserScan>* laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+    // Subscribers
+    std::shared_ptr <message_filters::Subscriber<sensor_msgs::msg::LaserScan>> laser_scan_sub_;    ///< Subscriber to the LaserScan message.
+    std::shared_ptr <tf2_ros::MessageFilter<sensor_msgs::msg::LaserScan>> laser_scan_filter_; ///< Transform and LaserScan message Syncronizer.
 
     geometry_msgs::msg::PoseArray poses_;
 
@@ -109,14 +112,7 @@ private:
     rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr poses_pub_;
     rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr path_pub_;
 
-    /*rclcpp::Publisher pose_pub_;   ///< Publisher of the pose with covariance.
-    rclcpp::Publisher map_pub_;
-    rclcpp::Publisher dist_pub_;
-    rclcpp::Publisher patch_pub_;
-    rclcpp::Publisher poses_pub_;
-    rclcpp::Publisher path_pub_;*/
-
-    rclcpp::ServiceServer ss_;
+    rclcpp::Service<nav_msgs::srv::GetMap>::SharedPtr service;
 
     // == Laser stuff ==
     // allow to handle multiple lasers at once
@@ -140,7 +136,7 @@ private:
     rclcpp::Duration transform_tolerance_;   ///< Defines how long map->odom transform is good for.
 
     // == Inner state ==
-    PFSlam2D* slam2d_;
+    std::shared_ptr <PFSlam2D> slam2d_;
     Pose2D    odom_;
 };
 
