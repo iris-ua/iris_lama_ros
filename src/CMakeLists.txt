@@ -16,8 +16,14 @@ ament_target_dependencies(pf_slam2d_ros
         "Eigen3" "tf2" "tf2_sensor_msgs" "tf2_msgs" "tf2_ros" "tf2_geometry_msgs" "rclcpp" "nav_msgs" "sensor_msgs"
         "geometry_msgs" "message_filters" "visualization_msgs" "rosbag2" "iris_lama")
 
-install(TARGETS loc2d_ros pf_slam2d_ros #slam2d_ros
-    ARCHIVE DESTINATION ./ilr2_build/
-    LIBRARY DESTINATION ./ilr2_build/
-    RUNTIME DESTINATION ./ilr2_build/
-)
+# Install executables
+install(TARGETS loc2d_ros pf_slam2d_ros slam2d_ros
+        DESTINATION lib/${PROJECT_NAME})
+
+# Install launch files
+install(DIRECTORY ../launch
+        DESTINATION share/${PROJECT_NAME}/)
+
+# Install config files
+install(DIRECTORY ../config
+        DESTINATION share/${PROJECT_NAME}/)
