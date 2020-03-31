@@ -13,7 +13,7 @@
 
     <param name="/use_sim_time" value="true"/>
 
-    <node pkg="iris_lama_ros" name="slam2d_ros" type="slam2d_ros" output="screen" required="true">
+    <node pkg="iris_lama_ros2" name="slam2d_ros" type="slam2d_ros" output="screen" required="true">
         <param name="scan_topic" value="$(arg scan_topic)"/>
         <param name="rosbag"     value="$(arg rosbag)"/>
 

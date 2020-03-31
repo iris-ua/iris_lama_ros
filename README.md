@@ -56,11 +56,11 @@ The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2
 
 To create a map using *Online SLAM* execute
 ```
-rosrun iris_lama_ros slam2d_ros scan_topic:=base_scan
+ros2 run iris_lama_ros2 slam2d_ros --ros-args --remap scan_topic:=base_scan
 ```
 and to create a map using *Particle Filter SLAM* execute
 ```
-rosrun iris_lama_ros pf_slam2d_ros scan_topic:=base_scan
+ros2 run iris_lama_ros2 pf_slam2d_ros --ros-args --remap scan_topic:=base_scan
 ```
 
 Both nodes will publish to expected topics such as `/map` and `/tf`.
@@ -71,11 +71,11 @@ If you want to obtain a map from a rosbag and you want to save time (a lot),
 you can let iris_lama_ros "play" the rosbag for you.
 
 ```
-roslaunch iris_lama_ros slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.bag
+ros2 launch iris_lama_ros2 slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.db3
 ```
 or
 ```
-roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.bag
+ros2 launch iris_lama_ros2 pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.db3
 ```
 
 ### Parameters

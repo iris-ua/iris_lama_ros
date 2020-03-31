@@ -1,0 +1,13 @@
+slam2d_ros:
+  ros__parameters:
+    scan_topic: "/scan"
+    rosbag: ""
+
+    d_thresh: 0.5
+    a_thresh: 0.5
+    mrange: 20
+
+    use_compression: False
+
+    create_summary: True
+    map_publish_period: 30
