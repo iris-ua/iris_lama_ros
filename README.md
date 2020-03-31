@@ -2,26 +2,55 @@ LaMa ROS - Alternative Localization and Mapping for ROS.
 ========================================================
 https://github.com/iris-ua/iris_lama_ros
 
-Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019.
+Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019. Ported to ROS2 by David Simoes.
 
 Overview
 --------
 
 ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization and Mapping package from the **Intelligent Robotics and Systems** (IRIS) Laboratory, University of Aveiro. It provides 2D Localization and SLAM. It works great on a [TurtleBot2](https://www.turtlebot.com/turtlebot2/) with a [Raspberry Pi 3 Model B+](https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/) and an Hokuyo (Rapid URG).
 
+#### Environment
+
+Use Docker if you want a containerized environment. A `Dockerfile` is supplied, and you can create the environment with
+
+    sudo docker build -t "ros2:Dockerfile" .
+
+If you are on an office network that blocks Google's DNS servers, [configure](https://stackoverflow.com/questions/44184496/configuring-options-for-docker-run/44184773#44184773) your DNS. It should be as simple as editing `/etc/docker/daemon.json` with your office's [DNS server](https://www.tecmint.com/find-my-dns-server-ip-address-in-linux/). 
+
+To run the container, a suggestion is
+
+    wget https://partner-images.canonical.com/core/bionic/current/ubuntu-bionic-core-cloudimg-amd64-root.tar.gz
+    sudo docker build -t "ros2:Dockerfile" .
+    mkdir shared_folder/
+    sudo docker run -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2:Dockerfile" bash
+    ./ros_entrypoint.sh
+    cd /mnt/iris_lama_ros2/
+
 #### Build
 
-To build LaMa ROS, clone it from GitHub and use `catkin` to build.
+To build LaMa ROS2, clone it from GitHub and use `colcon` to build.
 ```
-mkdir src
-cd src
+cd /mnt/iris_lama_ros2/
 git clone https://github.com/iris-ua/iris_lama
+cd iris_lama
+mkdir build
+cd build
+cmake ..
+make
+
+cd /mnt/iris_lama_ros2/
+mkdir -p dev_ws/src
+cd dev_ws/src
 git clone https://github.com/iris-ua/iris_lama_ros
-cd ..
-catkin config --extend /opt/ros/melodic
-catkin build
+cd iris_lama_ros
+git checkout eloquent-devel
+cd ../..
+cp /mnt/iris_lama_ros2/iris_lama/build/src/libiris_lama.a /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros
+cp -r /mnt/iris_lama_ros2/iris_lama/include /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros/
+colcon build
 ```
-The build was tested in **Ubuntu 18.04** with ROS **melodic**. It will not build with `catkin_make` or `catkin_make_isolated`.
+
+The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2 Eloquent**.
 
 ## SLAM nodes
 
