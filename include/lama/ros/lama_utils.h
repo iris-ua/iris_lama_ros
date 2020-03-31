@@ -13,11 +13,15 @@
 
 namespace lama_utils {
 
+    /*
+     * Returns a Geometry TransformStamped message, given a tf2::Transform,
+     * a rclcpp::Time timestamp, and the global_frame and child_frame std::string's
+     */
     geometry_msgs::msg::TransformStamped
     createTransformStamped(const tf2::Transform &myTransform,
-                                       const rclcpp::Time &myTime,
-                                       const std::string &global_frame,
-                                       const std::string &child_frame) {
+                           const rclcpp::Time &myTime,
+                           const std::string &global_frame,
+                           const std::string &child_frame) {
         // this is better but requires a tf2::TimePoint
         // https://github.com/ros2/geometry2/blob/72b5b179df1818a81290631cb20578e279bffcb3/tf2_geometry_msgs/include/tf2_geometry_msgs/tf2_geometry_msgs.h#L510
         // geometry_msgs::msg::TransformStamped msg2 =
@@ -39,9 +43,13 @@ namespace lama_utils {
         return msg;
     }
 
+    /*
+     * Returns a Geometry PoseStamped message, given a tf2::Transform,
+     * a rclcpp::Time timestamp, and the std::string global_frame
+     */
     geometry_msgs::msg::PoseStamped
     createPoseStamped(const tf2::Transform &myTransform, const rclcpp::Time &myTime,
-                                  const std::string &global_frame) {
+                      const std::string &global_frame) {
         geometry_msgs::msg::PoseStamped msg;
 
         msg.pose.position.x = myTransform.getOrigin().x();
@@ -57,10 +65,13 @@ namespace lama_utils {
         return msg;
     }
 
-
+    /*
+     * Returns a Geometry Vector3Stamped message, given a tf2::Vector3,
+     * a rclcpp::Time timestamp, and the std::string global_frame
+     */
     geometry_msgs::msg::Vector3Stamped
     createVector3Stamped(const tf2::Vector3 &myVector, const rclcpp::Time &myTime,
-            const std::string &global_frame) {
+                         const std::string &global_frame) {
         geometry_msgs::msg::Vector3Stamped msg;
 
         msg.vector.x = myVector.x();
@@ -72,6 +83,9 @@ namespace lama_utils {
         return msg;
     }
 
+    /*
+     * Returns a TF2 Stamped<Transform>, given an equivalent Geometry PoseStamped message
+     */
     tf2::Stamped <tf2::Transform>
     createStampedTransform(const geometry_msgs::msg::PoseStamped &myPoseStamped) {
         // Should we use geometry_msgs::msg::TransformStamped?
@@ -90,6 +104,9 @@ namespace lama_utils {
         return converted;
     }
 
+    /*
+     * Returns a TF2 Stamped<Vector3>, given an equivalent Geometry Vector3Stamped message
+     */
     tf2::Stamped <tf2::Vector3>
     createStampedVector3(const geometry_msgs::msg::Vector3Stamped &myVectorStamped) {
         // TODO why doesnt this work....
@@ -104,8 +121,10 @@ namespace lama_utils {
         return converted;
     }
 
-
-    tf2Scalar getYaw(tf2::Quaternion q){
+    /*
+     * Returns the 'yaw' component (double) of a TF2 Quaternion
+     */
+    tf2Scalar getYaw(tf2::Quaternion q) {
         // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
         // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
         // http://docs.ros.org/jade/api/tf2/html/classtf2_1_1Transform.html
@@ -118,7 +137,10 @@ namespace lama_utils {
         return laser_origin_yaw;
     }
 
-    tf2Scalar getYaw(geometry_msgs::msg::Quaternion q_msg){
+    /*
+     * Returns the 'yaw' component (double) of a Geometry Quaternion message
+     */
+    tf2Scalar getYaw(geometry_msgs::msg::Quaternion q_msg) {
         // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
         // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
         tf2::Quaternion q;
@@ -127,6 +149,40 @@ namespace lama_utils {
         return getYaw(q);
     }
 
+    /*
+     * Replays a rosbag2 file, logging into a ROS2 Node
+     */
+    void ReplayRosbag(std::shared_ptr <rclcpp::Node>& node, const std::string& rosbag_filename)
+    {
+        // TODO how to remap scan topic to something else? maybe impossible
+        /*std::string scan_topic;
+        node->get_parameter_or("scan_topic", scan_topic, std::string("/scan"));
+        ROS_INFO(node->get_logger(), "Scan topic: %s", scan_topic.c_str());
+    */
+
+        // https://github.com/ros2/rosbag2/blob/master/rosbag2_tests/test/rosbag2_tests/test_rosbag2_play_end_to_end.cpp
+        RCLCPP_INFO(node->get_logger(), "Opening rosbag [%s]", rosbag_filename.c_str());
+        auto exitcode = std::system(("ros2 bag info "+rosbag_filename).c_str());
+        if(exitcode != 0)
+        {
+            RCLCPP_FATAL(node->get_logger(), "Unable to open rosbag [%s]", rosbag_filename.c_str());
+            return;
+        }
+
+        RCLCPP_INFO(node->get_logger(), "Allow time for the subscribers to connect");
+        rclcpp::Rate r(1);
+        r.sleep();
+
+        RCLCPP_INFO(node->get_logger(), "Playing rosbag [%s]", rosbag_filename.c_str());
+        exitcode = std::system(("ros2 bag play "+rosbag_filename).c_str());
+        if(exitcode != 0)
+        {
+            RCLCPP_FATAL(node->get_logger(), "Error playing rosbag [%s]", rosbag_filename.c_str());
+            return;
+        }
+
+        RCLCPP_INFO(node->get_logger(), "--------- Mapping Completed ---------");
+    }
 
 
 }

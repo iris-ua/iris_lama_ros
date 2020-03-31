@@ -31,7 +31,6 @@
  *
  */
 
-//#include <nav_msgs/GetMap.h>
 #include "lama/ros/loc2d_ros.h"
 
 lama::Loc2DROS::Loc2DROS(const std::string &name) :

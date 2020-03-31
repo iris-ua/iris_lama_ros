@@ -35,19 +35,15 @@
 
 // ROS includes
 #include "rclcpp/rclcpp.hpp"
-
-// Transform include
-#include <tf2_ros/transform_broadcaster.h>
-#include <tf2_ros/transform_listener.h>
 #include <tf2_ros/message_filter.h>
 #include "tf2_ros/create_timer_ros.h"
 #include "tf2_ros/buffer.h"
 
-#include <message_filters/subscriber.h>
+// Transform include
+#include <tf2_ros/transform_broadcaster.h>
+#include <tf2_ros/transform_listener.h>
 
-#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
-#include "tf2/transform_datatypes.h"
-#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
+#include <message_filters/subscriber.h>
 
 // Pose publishing
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
@@ -55,19 +51,17 @@
 #include "sensor_msgs/msg/laser_scan.hpp"
 // maps
 #include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/srv/get_map.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
+#include <tf2_sensor_msgs/tf2_sensor_msgs.h>
 
 #include <lama/pose3d.h>
 #include <lama/loc2d.h>
-
 #include <lama/sdm/simple_occupancy_map.h>
 #include <lama/sdm/dynamic_distance_map.h>
 
-#include "nav_msgs/srv/get_map.hpp"
-
 #include "lama/ros/lama_utils.h"
 #include "lama/time.h"
-#include <tf2/convert.h>
-#include <tf2_ros/buffer_interface.h>
 
 namespace lama {
 

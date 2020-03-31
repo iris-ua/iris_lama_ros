@@ -521,27 +521,23 @@ void lama::PFSlam2DROS::printSummary() {
 }
 
 int main(int argc, char *argv[]) {
-
     rclcpp::init(argc, argv);
     lama::PFSlam2DROS slam2d_ros {"pf_slam2d_ros"};
-    RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
 
-    /*rclcpp::Node pnh("~");
     std::string rosbag_filename;
-
-    if( !pnh.get_parameter("rosbag", rosbag_filename ) || rosbag_filename.empty()) {
-        RCLCPP_INFO(pnh.get_logger(), "Running SLAM in Live Mode");
+    if( !slam2d_ros.node->get_parameter("rosbag", rosbag_filename ) || rosbag_filename.empty()) {
+        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
     } else{
-        RCLCPP_INFO(pnh.get_logger(), "Running SLAM in Rosbag Mode (offline)");
-        lama::ReplayRosbag(pnh, rosbag_filename);
+        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Rosbag Mode (offline)");
+        lama_utils::ReplayRosbag(slam2d_ros.node, rosbag_filename);
 
         if (rclcpp::ok())
             slam2d_ros.printSummary();
 
-        RCLCPP_INFO(pnh.get_logger(), "You can now save your map. Use ctrl-c to quit.");
+        RCLCPP_INFO(slam2d_ros.node->get_logger(), "You can now save your map. Use ctrl-c to quit.");
         // publish the maps a last time
         slam2d_ros.publishMaps();
-    }*/
+    }
 
     rclcpp::spin(slam2d_ros.node);
     return 0;

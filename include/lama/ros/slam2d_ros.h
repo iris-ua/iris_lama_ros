@@ -39,27 +39,27 @@
 // Transform include
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/transform_listener.h>
+
 #include <tf2_ros/message_filter.h>
 #include "tf2_ros/create_timer_ros.h"
-
 #include <message_filters/subscriber.h>
 
 // Pose publishing
-//#include <geometry_msgs/PoseWithCovarianceStamped.h>
 #include "geometry_msgs/msg/pose_with_covariance_stamped.hpp"
-// Laser message
-//#include <sensor_msgs/LaserScan.h>
-#include "sensor_msgs/msg/laser_scan.hpp"
-// maps
-//#include <nav_msgs/OccupancyGrid.h>
-#include "nav_msgs/msg/occupancy_grid.hpp"
-//#include <nav_msgs/GetMap.h>
-#include "nav_msgs/srv/get_map.hpp"
+#include "tf2_geometry_msgs/tf2_geometry_msgs.h"
 
-#include "lama/ros/lama_utils.h"
+// Laser message
+#include "sensor_msgs/msg/laser_scan.hpp"
+
+// maps
+#include "nav_msgs/msg/occupancy_grid.hpp"
+#include "nav_msgs/srv/get_map.hpp"
 
 #include <lama/slam2d.h>
 #include <lama/pose3d.h>
+#include <lama/image.h>
+#include "lama/ros/slam2d_ros.h"
+#include "lama/ros/lama_utils.h"
 
 namespace lama {
 
@@ -88,12 +88,8 @@ private:
 private:
 
     // == ROS stuff ==
-    //rclcpp::Node nh_;  ///< Root ros node handle.
-    //rclcpp::Node pnh_; ///< Private ros node handle.
-
     std::shared_ptr <rclcpp::Clock> ros_clock;
     rclcpp::TimerBase::SharedPtr periodic_publish_;     /// timer user to publish periodically the maps
-    //rclcpp::Timer periodic_publish_; /// timer user to publish periodically the maps
 
     std::shared_ptr <tf2_ros::TransformBroadcaster> tfb_;         ///< Position transform broadcaster.
     std::shared_ptr <tf2_ros::TransformListener> tf_;             ///< Global transform listener.
