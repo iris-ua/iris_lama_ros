@@ -39,10 +39,15 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
 
     // Load parameters from the server.
     double tmp;
+    node->declare_parameter("global_frame_id");
     node->get_parameter_or("global_frame_id", global_frame_id_, std::string("/map"));
+    node->declare_parameter("odom_frame_id");
     node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    node->declare_parameter("base_frame_id");
     node->get_parameter_or("base_frame_id", base_frame_id_, std::string("/base_link"));
+    node->declare_parameter("scan_topic");
     node->get_parameter_or("scan_topic", scan_topic_, std::string("/scan"));
+    node->declare_parameter("transform_tolerance");
     node->get_parameter_or("transform_tolerance", tmp, 0.1);
     transform_tolerance_ = rclcpp::Duration::from_seconds(tmp);
 

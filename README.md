@@ -48,6 +48,7 @@ cd ../..
 cp /mnt/iris_lama_ros2/iris_lama/build/src/libiris_lama.a /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros
 cp -r /mnt/iris_lama_ros2/iris_lama/include /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros/
 colcon build
+. install/setup.bash
 ```
 
 The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2 Eloquent**.
@@ -56,11 +57,11 @@ The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2
 
 To create a map using *Online SLAM* execute
 ```
-ros2 run iris_lama_ros2 slam2d_ros --ros-args --remap scan_topic:=base_scan
+ros2 run iris_lama_ros2 slam2d_ros --ros-args -p scan_topic:=base_scan
 ```
 and to create a map using *Particle Filter SLAM* execute
 ```
-ros2 run iris_lama_ros2 pf_slam2d_ros --ros-args --remap scan_topic:=base_scan
+ros2 run iris_lama_ros2 pf_slam2d_ros --ros-args -p scan_topic:=base_scan
 ```
 
 Both nodes will publish to expected topics such as `/map` and `/tf`.
@@ -68,14 +69,15 @@ Both nodes will publish to expected topics such as `/map` and `/tf`.
 ### Offline Mapping (rosbag)
 
 If you want to obtain a map from a rosbag and you want to save time (a lot),
-you can let iris_lama_ros "play" the rosbag for you.
+you can let iris_lama_ros "play" the rosbag for you. Just edit the `config/offline_mode.yaml` 
+file with the correct rosbag path.
 
 ```
-ros2 launch iris_lama_ros2 slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.db3
+ros2 launch iris_lama_ros2 slam2d_offline_launch.py
 ```
 or
 ```
-ros2 launch iris_lama_ros2 pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/path/your/rosbag.db3
+ros2 launch iris_lama_ros2 pf_slam2d_offline_launch.py
 ```
 
 ### Parameters

@@ -18,8 +18,8 @@ def generate_launch_description():
         Node(
             package='iris_lama_ros2',
             node_namespace='iris_lama_ros2',
-            node_executable='slam2d_ros',
-            node_name='slam2d_ros',
+            node_executable='pf_slam2d_ros',
+            node_name='pf_slam2d_ros',
             #remappings=[
             #    ('/input/pose', '/turtlesim1/turtle1/pose'),
             #    ('/output/cmd_vel', '/turtlesim2/turtle1/cmd_vel')
