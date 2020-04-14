@@ -40,24 +40,20 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     // Load parameters from the server.
     double tmp;
     node->declare_parameter("global_frame_id");
-    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("/map"));
+    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("map"));
     node->declare_parameter("odom_frame_id");
-    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("odom"));
     node->declare_parameter("base_frame_id");
-    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("/base_link"));
+    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("base_link"));
     node->declare_parameter("scan_topic");
     node->get_parameter_or("scan_topic", scan_topic_, std::string("/scan"));
     node->declare_parameter("transform_tolerance");
     node->get_parameter_or("transform_tolerance", tmp, 0.1);
-    transform_tolerance_ = rclcpp::Duration::from_seconds(tmp);
+    transform_tolerance_ = rclcpp::Duration(static_cast<int64_t>(RCL_S_TO_NS(tmp)));
 
     // Setup TF workers ...
     // https://github.com/ros-planning/navigation2/blob/eloquent-devel/nav2_costmap_2d/src/costmap_2d_ros.cpp
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
-    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
-            node->get_node_base_interface(),
-            node->get_node_timers_interface());
-    tf_buffer_->setCreateTimerInterface(timer_interface);
     tf_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     tfb_ = std::make_shared<tf2_ros::TransformBroadcaster>(node);
 
@@ -68,7 +64,7 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     // https://github.com/ros2/ros1_bridge/pull/189/files
     // https://github.com/ros2/geometry2/blob/eloquent/tf2_ros/test/message_filter_test.cpp
     laser_scan_sub_ = std::make_shared < message_filters::Subscriber < sensor_msgs::msg::LaserScan >> (
-            node, scan_topic_, rclcpp::QoS(rclcpp::KeepLast(100)).get_rmw_qos_profile());
+            node, scan_topic_, rclcpp::QoS(rclcpp::SystemDefaultsQoS()).keep_last(100).get_rmw_qos_profile());
     laser_scan_filter_ = std::make_shared < tf2_ros::MessageFilter < sensor_msgs::msg::LaserScan >> (
             *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
                     node->get_node_logging_interface(), node->get_node_clock_interface());
@@ -90,7 +86,7 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
            rclcpp::spin_until_future_complete(node, result_future) != rclcpp::executor::FutureReturnCode::SUCCESS) {
         // http://docs.ros2.org/latest/api/rclcpp/logging_8hpp.html#a451bee77c253ec72f4984bb577ff818a
         rclcpp::Clock myClock = *node->get_clock();  // Why cant this be directly used as an argument?...
-        RCLCPP_WARN_THROTTLE(node->get_logger(), myClock, 1, "Request for map failed; trying again ...");
+        RCLCPP_WARN(node->get_logger(), "Request for map failed; trying again ...");
         r.sleep();
     }
 

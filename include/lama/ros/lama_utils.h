@@ -143,8 +143,8 @@ namespace lama_utils {
     tf2Scalar getYaw(geometry_msgs::msg::Quaternion q_msg) {
         // https://github.com/ros2/geometry2/blob/ros2/tf2_geometry_msgs/test/test_tf2_geometry_msgs.cpp
         // https://answers.ros.org/question/339528/quaternion-to-rpy-ros2/
-        tf2::Quaternion q;
-        tf2::convert(q_msg, q);
+        tf2::Quaternion q(q_msg.x, q_msg.y, q_msg.z, q_msg.w);
+        //tf2::convert(q_msg, q);
 
         return getYaw(q);
     }

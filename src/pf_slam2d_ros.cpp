@@ -41,16 +41,16 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
     // Load parameters from the server.
     double tmp;
     node->declare_parameter("global_frame_id");
-    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("/map"));
+    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("map"));
     node->declare_parameter("odom_frame_id");
-    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("odom"));
     node->declare_parameter("base_frame_id");
-    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("/base_link"));
+    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("base_link"));
     node->declare_parameter("scan_topic");
     node->get_parameter_or("scan_topic", scan_topic_, std::string("/scan"));
     node->declare_parameter("transform_tolerance");
     node->get_parameter_or("transform_tolerance", tmp, 0.1);
-    transform_tolerance_ = rclcpp::Duration::from_seconds(tmp);
+    transform_tolerance_ = rclcpp::Duration(static_cast<int64_t>(RCL_S_TO_NS(tmp)));
 
     Vector2d pos;
     node->declare_parameter("initial_pos_x");
@@ -125,17 +125,13 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
 
     // Setup TF workers ...
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
-    auto timer_interface = std::make_shared<tf2_ros::CreateTimerROS>(
-            node->get_node_base_interface(),
-            node->get_node_timers_interface());
-    tf_buffer_->setCreateTimerInterface(timer_interface);
     tf_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     tfb_ = std::make_shared<tf2_ros::TransformBroadcaster>(node);
 
     // Syncronized LaserScan messages with odometry transforms. This ensures that an odometry transformation
     // exists when the handler of a LaserScan message is called.
     laser_scan_sub_ = std::make_shared < message_filters::Subscriber < sensor_msgs::msg::LaserScan >> (
-            node, scan_topic_, rclcpp::QoS(rclcpp::KeepLast(100)).get_rmw_qos_profile());
+            node, scan_topic_, rclcpp::QoS(rclcpp::SystemDefaultsQoS()).keep_last(100).get_rmw_qos_profile());
     laser_scan_filter_ = std::make_shared < tf2_ros::MessageFilter < sensor_msgs::msg::LaserScan >> (
             *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
                     node->get_node_logging_interface(), node->get_node_clock_interface());
@@ -172,7 +168,6 @@ lama::PFSlam2DROS::~PFSlam2DROS() {
 }
 
 void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
-
     int laser_index = -1;
 
     // verify if it is from a known source
@@ -309,7 +304,11 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
 
             tf2::Quaternion quat_tf;
             quat_tf.setRPY(0.0, 0.0, slam2d_->getParticles()[idx].poses[i].rotation());
-            tf2::convert(quat_tf, p.pose.orientation);
+            p.pose.orientation.x = quat_tf.getX();
+            p.pose.orientation.y = quat_tf.getY();
+            p.pose.orientation.z = quat_tf.getZ();
+            p.pose.orientation.w = quat_tf.getW();
+            //tf2::convert(quat_tf, p.pose.orientation);
             //p.pose.orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[idx].poses[i].rotation());
 
             path.poses.push_back(p);
@@ -337,7 +336,11 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
 
         tf2::Quaternion quat_tf;
         quat_tf.setRPY(0.0, 0.0, slam2d_->getParticles()[i].pose.rotation());
-        tf2::convert(quat_tf, poses_.poses[i].orientation);
+        poses_.poses[i].orientation.x = quat_tf.getX();
+        poses_.poses[i].orientation.y = quat_tf.getY();
+        poses_.poses[i].orientation.z = quat_tf.getZ();
+        poses_.poses[i].orientation.w = quat_tf.getW();
+        //tf2::convert(quat_tf, poses_.poses[i].orientation);
         //poses_.poses[i].orientation = tf2_ros::createQuaternionMsgFromYaw(slam2d_->getParticles()[i].pose.rotation());
     }
 
@@ -437,7 +440,11 @@ bool lama::PFSlam2DROS::OccupancyMsgFromOccupancyMap(nav_msgs::msg::OccupancyGri
 
     tf2::Quaternion quat_tf;
     quat_tf.setRPY(0.0, 0.0, 0);
-    tf2::convert(quat_tf, msg.info.origin.orientation);
+    msg.info.origin.orientation.x = quat_tf.getX();
+    msg.info.origin.orientation.y = quat_tf.getY();
+    msg.info.origin.orientation.z = quat_tf.getZ();
+    msg.info.origin.orientation.w = quat_tf.getW();
+    //tf2::convert(quat_tf, msg.info.origin.orientation);
     //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;
@@ -484,7 +491,11 @@ bool lama::PFSlam2DROS::DistanceMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid
 
     tf2::Quaternion quat_tf;
     quat_tf.setRPY(0.0, 0.0, 0);
-    tf2::convert(quat_tf, msg.info.origin.orientation);
+    msg.info.origin.orientation.x = quat_tf.getX();
+    msg.info.origin.orientation.y = quat_tf.getY();
+    msg.info.origin.orientation.z = quat_tf.getZ();
+    msg.info.origin.orientation.w = quat_tf.getW();
+    //tf2::convert(quat_tf, msg.info.origin.orientation);
     //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;
@@ -531,7 +542,11 @@ bool lama::PFSlam2DROS::PatchMsgFromOccupancyMap(nav_msgs::msg::OccupancyGrid &m
 
     tf2::Quaternion quat_tf;
     quat_tf.setRPY(0.0, 0.0, 0.0);
-    tf2::convert(quat_tf, msg.info.origin.orientation);
+    msg.info.origin.orientation.x = quat_tf.getX();
+    msg.info.origin.orientation.y = quat_tf.getY();
+    msg.info.origin.orientation.z = quat_tf.getZ();
+    msg.info.origin.orientation.w = quat_tf.getW();
+    //tf2::convert(quat_tf, msg.info.origin.orientation);
     //msg.info.origin.orientation = tf2_ros::createQuaternionMsgFromYaw(0);
 
     return true;

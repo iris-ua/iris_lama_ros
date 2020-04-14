@@ -1,0 +1,33 @@
+# https://github.com/ros2/rcl/blob/master/rcl_yaml_param_parser/README.md
+# https://index.ros.org/doc/ros2/Tutorials/Parameters/Understanding-ROS2-Parameters/
+# https://answers.ros.org/question/348107/adding-parameters-by-command-line-in-eloquentros2-is-not-working-like-tutorial/
+
+/iris_lama_ros2/slam2d_ros:
+  ros__parameters:
+    transform_tolerance: 0.1 
+    use_sim_time: True
+
+    d_thresh: 0.5
+    a_thresh: 0.5
+    mrange: 20.0
+
+    use_compression: False
+
+    create_summary: True
+    map_publish_period: 30.0
+
+/iris_lama_ros2/pf_slam2d_ros:
+  ros__parameters:
+    transform_tolerance: 0.1
+    use_sim_time: True
+    
+    particles: 30
+    d_thresh: 0.5
+    a_thresh: 0.5
+    mrange: 20.0
+
+    threads: 4
+    use_compression: False
+
+    create_summary: True
+    map_publish_period: 30.0

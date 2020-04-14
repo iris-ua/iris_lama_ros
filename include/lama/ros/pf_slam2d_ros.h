@@ -41,7 +41,6 @@
 #include <tf2_ros/transform_listener.h>
 
 #include <tf2_ros/message_filter.h>
-#include "tf2_ros/create_timer_ros.h"
 #include <message_filters/subscriber.h>
 
 // Pose publishing
