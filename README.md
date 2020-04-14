@@ -20,11 +20,13 @@ If you are on an office network that blocks Google's DNS servers, [configure](ht
 To run the container, a suggestion is
 
     wget https://partner-images.canonical.com/core/bionic/current/ubuntu-bionic-core-cloudimg-amd64-root.tar.gz
-    sudo docker build -t "ros2:Dockerfile" .
+    sudo docker build -t "ros2-dashing:Dockerfile" .
     mkdir shared_folder/
-    sudo docker run -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2:Dockerfile" bash
+    sudo docker run -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2-dashing:Dockerfile" bash
     ./ros_entrypoint.sh
     cd /mnt/iris_lama_ros2/
+
+This Dockerfile includes TurtleBot3 packages for easy testing and deployment. Remove the clutter if unnecessary.
 
 #### Build
 
@@ -43,7 +45,7 @@ mkdir -p dev_ws/src
 cd dev_ws/src
 git clone https://github.com/iris-ua/iris_lama_ros
 cd iris_lama_ros
-git checkout eloquent-devel
+git checkout dashing-devel
 cd ../..
 cp /mnt/iris_lama_ros2/iris_lama/build/src/libiris_lama.a /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros
 cp -r /mnt/iris_lama_ros2/iris_lama/include /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros/
@@ -51,17 +53,17 @@ colcon build
 . install/setup.bash
 ```
 
-The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2 Eloquent**.
+The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2 Dashing**.
 
 ## SLAM nodes
 
-To create a map using *Online SLAM* execute
+Edit the `config/live.yaml` file with whatever parameters you wish to set. To create a map using *Online SLAM* execute
 ```
-ros2 run iris_lama_ros2 slam2d_ros --ros-args -p scan_topic:=base_scan
+ros2 launch iris_lama_ros2 slam2d_live.py
 ```
 and to create a map using *Particle Filter SLAM* execute
 ```
-ros2 run iris_lama_ros2 pf_slam2d_ros --ros-args -p scan_topic:=base_scan
+ros2 launch iris_lama_ros2 pf_slam2d_live.py
 ```
 
 Both nodes will publish to expected topics such as `/map` and `/tf`.
@@ -119,9 +121,9 @@ Particle Filter SLAM only:
 This node requires the existence of the `/static_map` service to load the map.
 To run the localization just execute
 ```
-rosrun iris_lama_ros loc2d_ros scan:=base_scan
+ros2 launch iris_lama_ros2 loc2d_ros
 ```
-Please use `rviz` to set the initial pose. Global localization is not yet implemented.
+Please use `rviz2` to set the initial pose. Global localization is not yet implemented.
 
 ### Parameters
 
