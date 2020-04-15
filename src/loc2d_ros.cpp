@@ -51,12 +51,47 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     node->get_parameter_or("transform_tolerance", tmp, 0.1);
     transform_tolerance_ = rclcpp::Duration(static_cast<int64_t>(RCL_S_TO_NS(tmp)));
 
+    loc2d_ = std::make_shared<Loc2D>();
+
     // Setup TF workers ...
     // https://github.com/ros-planning/navigation2/blob/eloquent-devel/nav2_costmap_2d/src/costmap_2d_ros.cpp
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
     tf_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
     tfb_ = std::make_shared<tf2_ros::TransformBroadcaster>(node);
 
+    // https://index.ros.org/doc/ros2/Tutorials/Writing-A-Simple-Cpp-Publisher-And-Subscriber/
+    pose_sub_ = node->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+            "/initialpose", 1, std::bind(&Loc2DROS::onInitialPose, this, std::placeholders::_1));
+
+    // Set publishers
+    pose_pub_ = node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/pose", 10);
+
+    // Get map
+    RCLCPP_INFO(node->get_logger(), "Requesting the map...");
+    auto client = node->create_client<nav_msgs::srv::GetMap>("/map");
+    auto request = std::make_shared<nav_msgs::srv::GetMap::Request>();
+    while (!client->wait_for_service(std::chrono::seconds(1))) {
+        if (!rclcpp::ok()) {
+            RCLCPP_ERROR(node->get_logger(), "Interrupted while waiting for the /map service. Exiting.");
+            return;
+        }
+        RCLCPP_INFO(node->get_logger(), "service not available, waiting again...");
+    }
+
+    // Wait for the result.
+    auto result_future = client->async_send_request(request);
+    if (rclcpp::spin_until_future_complete(node, result_future) == rclcpp::executor::FutureReturnCode::SUCCESS)
+    {
+        RCLCPP_INFO(node->get_logger(), "Got map");
+    } else {
+        RCLCPP_ERROR(node->get_logger(), "Failed to call service add_two_ints");
+        return;
+    }
+    ////
+
+    auto result = result_future.get();
+    InitLoc2DFromOccupancyGridMsg(result->map);
+    
     // Setup subscribers
     // Synchronized LaserScan messages with odometry transforms. This ensures that an odometry transformation exists
     //      when the handler of a LaserScan message is called.
@@ -70,28 +105,6 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
                     node->get_node_logging_interface(), node->get_node_clock_interface());
     laser_scan_filter_->registerCallback(std::bind(&Loc2DROS::onLaserScan, this, std::placeholders::_1));
 
-    // https://index.ros.org/doc/ros2/Tutorials/Writing-A-Simple-Cpp-Publisher-And-Subscriber/
-    pose_sub_ = node->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-            "/initialpose", 1, std::bind(&Loc2DROS::onInitialPose, this, std::placeholders::_1));
-
-    // Set publishers
-    pose_pub_ = node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>("/pose", 10);
-
-    RCLCPP_INFO(node->get_logger(), "Requesting the map...");
-    auto req = std::make_shared<nav_msgs::srv::GetMap::Request>();
-    auto client = node->create_client<nav_msgs::srv::GetMap>("static_map");
-    auto result_future = client->async_send_request(req);
-    rclcpp::Rate r(1);
-    while (rclcpp::ok() and
-           rclcpp::spin_until_future_complete(node, result_future) != rclcpp::executor::FutureReturnCode::SUCCESS) {
-        // http://docs.ros2.org/latest/api/rclcpp/logging_8hpp.html#a451bee77c253ec72f4984bb577ff818a
-        rclcpp::Clock myClock = *node->get_clock();  // Why cant this be directly used as an argument?...
-        RCLCPP_WARN(node->get_logger(), "Request for map failed; trying again ...");
-        r.sleep();
-    }
-
-    auto result = result_future.get();
-    InitLoc2DFromOccupancyGridMsg(result->map);
 
     RCLCPP_INFO(node->get_logger(), "2D Localization node up and running");
 }
@@ -109,7 +122,7 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::msg::PoseWithCovarianceS
     RCLCPP_INFO(node->get_logger(), "Setting pose to (%f, %f, %f)", x, y, initial_pose_yaw);
     lama::Pose2D pose(x, y, initial_pose_yaw);
 
-    loc2d_.setPose(pose);
+    loc2d_->setPose(pose);
 }
 
 void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
@@ -124,7 +137,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
     } else {
         laser_index = frame_to_laser_[laser_scan->header.frame_id];
     }
-
+ 
     // Where was the robot at the time of the scan ?
     // http://wiki.ros.org/tf2/Terminology
     // tf::Pose equivalent to http://docs.ros.org/groovy/api/tf2/html/c++/classbtTransform.html
@@ -143,14 +156,13 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         return;
     }
     tf2::Stamped <tf2::Transform> odom_tf = lama_utils::createStampedTransform(msg_odom_tf);
-
+   
     double odom_tf_yaw = lama_utils::getYaw(odom_tf.getRotation());
     lama::Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(), odom_tf_yaw);
 
-    bool update = loc2d_.enoughMotion(odom);
+    bool update = loc2d_->enoughMotion(odom);
 
     if (update) {
-
         size_t size = laser_scan->ranges.size();
         size_t beam_step = 1;
 
@@ -184,17 +196,17 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             point << range * std::cos(angle_min + (i * angle_inc)),
                     range * std::sin(angle_min + (i * angle_inc)),
                     0;
-
+            //std::cout << range * std::cos(angle_min + (i * angle_inc)) << " " <<
+            //        range * std::sin(angle_min + (i * angle_inc)) << " " <<
+            //        0 << " " << std::endl;
             cloud->points.push_back(point);
         }
 
         // https://github.com/ros2/rclcpp/blob/master/rclcpp/include/rclcpp/time.hpp
         // https://github.com/ros2/rcl_interfaces/blob/master/builtin_interfaces/msg/Time.msg
-        rclcpp::Time t(laser_scan->header.stamp);
-        loc2d_.update(cloud, odom, t.seconds());
-
-        Pose2D pose = loc2d_.getPose();
-
+        loc2d_->update(cloud, odom, rclcpp::Time(laser_scan->header.stamp).seconds()); // TODO crashing here
+        Pose2D pose = loc2d_->getPose();
+        
         // subtracting base to odom from map to base and send map to odom instead
         geometry_msgs::msg::PoseStamped msg_odom_to_map;
         try {
@@ -219,7 +231,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         // tolerance time so that odom can be used
         // https://github.com/ros2/rclcpp/blob/master/rclcpp/include/rclcpp/time.hpp
         rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
-
+        
         // http://wiki.ros.org/tf2/Tutorials/Migration/DataConversions
         // http://docs.ros.org/indigo/api/tf2_ros/html/c++/classtf2__ros_1_1TransformBroadcaster.html
         // http://docs.ros.org/indigo/api/tf/html/c++/classtf_1_1StampedTransform.html
@@ -235,7 +247,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
-
+    
 }
 
 void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::OccupancyGrid &msg) {
@@ -258,8 +270,8 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::Occupanc
 
     options.resolution = msg.info.resolution;
 
-    loc2d_.Init(options);
-    loc2d_.setPose(prior);
+    loc2d_->Init(options);
+    loc2d_->setPose(prior);
 
     RCLCPP_INFO(node->get_logger(), "Localization parameters: d_thresh: %.2f, a_thresh: %.2f, l2_max: %.2f",
                 options.trans_thresh, options.rot_thresh, options.l2_max);
@@ -276,14 +288,14 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::msg::Occupanc
 
             char value = msg.data[i + j * width];
             if (value == 0) {
-                loc2d_.occupancy_map->setFree(coords);
+                loc2d_->occupancy_map->setFree(coords);
             } else if (value == 100) {
-                loc2d_.occupancy_map->setOccupied(coords);
-                loc2d_.distance_map->addObstacle(loc2d_.distance_map->w2m(coords));
+                loc2d_->occupancy_map->setOccupied(coords);
+                loc2d_->distance_map->addObstacle(loc2d_->distance_map->w2m(coords));
             }
         }// end for
 
-    loc2d_.distance_map->update();
+    loc2d_->distance_map->update();
 }
 
 bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
@@ -321,11 +333,10 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
         RCLCPP_WARN(node->get_logger(),
                     "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
-        return false;
+        //return false; // TODO uncomment
     }
 
     double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
-
     if (up.z() > 0) {
         laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
 
@@ -343,10 +354,9 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
         lasers_origin_.push_back(lp);
         RCLCPP_INFO(node->get_logger(), "Laser is mounted upside down.");
     }
-
     int laser_index = (int) frame_to_laser_.size();  // simple ID generator :)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
-
+    
     RCLCPP_INFO(node->get_logger(), "New laser configured (id=%d frame_id=%s)", laser_index,
                 laser_scan->header.frame_id.c_str());
 

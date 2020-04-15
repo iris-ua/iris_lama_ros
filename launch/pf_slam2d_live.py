@@ -8,7 +8,7 @@ def generate_launch_description():
     # https://index.ros.org/doc/ros2/Tutorials/Launch-Files/Creating-Launch-Files/
     # https://answers.ros.org/question/311456/how-to-launch-a-node-with-a-parameter-in-ros2/
     # https://answers.ros.org/question/322874/ros2-what-is-different-between-declarelaunchargument-and-launchconfiguration/
-    parameters_file_path = str(pathlib.Path(__file__).parents[1]) + '/config/tests.yaml'
+    parameters_file_path = str(pathlib.Path(__file__).parents[1]) + '/config/live.yaml'
     print(parameters_file_path)
 
     return LaunchDescription([
