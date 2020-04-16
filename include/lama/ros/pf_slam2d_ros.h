@@ -136,7 +136,7 @@ private:
 
     // == Inner state ==
     std::shared_ptr <PFSlam2D> slam2d_;
-    Pose2D    odom_;
+    //Pose2D    odom_;
 };
 
 } /* lama */
