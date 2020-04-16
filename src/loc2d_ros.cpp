@@ -84,7 +84,7 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     {
         RCLCPP_INFO(node->get_logger(), "Got map");
     } else {
-        RCLCPP_ERROR(node->get_logger(), "Failed to call service add_two_ints");
+        RCLCPP_ERROR(node->get_logger(), "Failed to call /map service");
         return;
     }
     ////
@@ -147,10 +147,10 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
     // http://docs.ros.org/api/geometry_msgs/html/msg/PoseStamped.html
     geometry_msgs::msg::PoseStamped msg_odom_tf;
     try {
-        geometry_msgs::msg::PoseStamped msg_odom_tf_baseFrame = lama_utils::createPoseStamped(
+        geometry_msgs::msg::PoseStamped msg_identity = lama_utils::createPoseStamped(
                 tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
                 rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
-        tf_buffer_->transform(msg_odom_tf_baseFrame, msg_odom_tf, odom_frame_id_);
+        tf_buffer_->transform(msg_identity, msg_odom_tf, odom_frame_id_);
     } catch (tf2::TransformException &e) {
         RCLCPP_WARN(node->get_logger(), "Failed to compute odom pose, skipping scan %s", e.what());
         return;
@@ -204,7 +204,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
 
         // https://github.com/ros2/rclcpp/blob/master/rclcpp/include/rclcpp/time.hpp
         // https://github.com/ros2/rcl_interfaces/blob/master/builtin_interfaces/msg/Time.msg
-        loc2d_->update(cloud, odom, rclcpp::Time(laser_scan->header.stamp).seconds()); // TODO crashing here
+        loc2d_->update(cloud, odom, rclcpp::Time(laser_scan->header.stamp).seconds());
         Pose2D pose = loc2d_->getPose();
         
         // subtracting base to odom from map to base and send map to odom instead
@@ -215,7 +215,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             tf2::Quaternion q;
             q.setRPY(0, 0, pose.rotation());
             geometry_msgs::msg::PoseStamped msg_odom_to_map_baseFrame = lama_utils::createPoseStamped(
-                    tf2::Transform(q, tf2::Vector3(pose.x(), pose.y(), 0)),
+                    tf2::Transform(q, tf2::Vector3(pose.x(), pose.y(), 0)).inverse(),
                     rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
             tf_buffer_->transform(msg_odom_to_map_baseFrame, msg_odom_to_map, odom_frame_id_);
         } catch (tf2::TransformException &e) {
@@ -302,10 +302,10 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     // find the origin of the sensor in the base frame
     geometry_msgs::msg::PoseStamped msg_laser_origin;
     try {
-        geometry_msgs::msg::PoseStamped msg_laser_origin_baseFrame = lama_utils::createPoseStamped(
+        geometry_msgs::msg::PoseStamped msg_identity = lama_utils::createPoseStamped(
                 tf2::Transform(tf2::Quaternion::getIdentity(), tf2::Vector3(0, 0, 0)),
                 rclcpp::Time(), laser_scan->header.frame_id);
-        tf_buffer_->transform(msg_laser_origin_baseFrame, msg_laser_origin, odom_frame_id_);
+        tf_buffer_->transform(msg_identity, msg_laser_origin, base_frame_id_);
     } catch (tf2::TransformException &e) {
         RCLCPP_ERROR(node->get_logger(), "Could not find origin of %s", laser_scan->header.frame_id.c_str());
         return false;

@@ -133,7 +133,7 @@ lama::Slam2DROS::Slam2DROS(std::string name) :
     // Setup service
     // https://index.ros.org/doc/ros2/Tutorials/Writing-A-Simple-Cpp-Service-And-Client/#write-the-service-node
     // https://answers.ros.org/question/299126/ros2-error-creating-a-service-server-as-a-member-function/
-    service = node->create_service<nav_msgs::srv::GetMap>("dynamic_map",
+    service = node->create_service<nav_msgs::srv::GetMap>("/dynamic_map",
                                                           std::bind(&Slam2DROS::onGetMap, this, std::placeholders::_1,
                                                                     std::placeholders::_2));
 
@@ -234,7 +234,7 @@ void lama::Slam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr la
             RCLCPP_WARN(node->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
-        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_tf);
+        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_to_map);
 
         latest_tf_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation()),
                                         tf2::Vector3(odom_to_map.getOrigin()));
@@ -298,7 +298,7 @@ bool lama::Slam2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr lase
     if (up.z() > 0) {
         laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
 
-        Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
+        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
                   0, 0, laser_origin_yaw);
 
         lasers_origin_.push_back(lp);
@@ -306,7 +306,7 @@ bool lama::Slam2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr lase
     } else {
         laser_is_reversed_.push_back(laser_scan->angle_min < laser_scan->angle_max);
 
-        Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
+        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
                   M_PI, 0, laser_origin_yaw);
 
         lasers_origin_.push_back(lp);
