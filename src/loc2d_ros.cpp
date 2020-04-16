@@ -87,7 +87,6 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
         RCLCPP_ERROR(node->get_logger(), "Failed to call /map service");
         return;
     }
-    ////
 
     auto result = result_future.get();
     InitLoc2DFromOccupancyGridMsg(result->map);
@@ -104,7 +103,6 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
             *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
                     node->get_node_logging_interface(), node->get_node_clock_interface());
     laser_scan_filter_->registerCallback(std::bind(&Loc2DROS::onLaserScan, this, std::placeholders::_1));
-
 
     RCLCPP_INFO(node->get_logger(), "2D Localization node up and running");
 }
@@ -196,9 +194,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
             point << range * std::cos(angle_min + (i * angle_inc)),
                     range * std::sin(angle_min + (i * angle_inc)),
                     0;
-            //std::cout << range * std::cos(angle_min + (i * angle_inc)) << " " <<
-            //        range * std::sin(angle_min + (i * angle_inc)) << " " <<
-            //        0 << " " << std::endl;
+
             cloud->points.push_back(point);
         }
 
@@ -370,5 +366,6 @@ int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
     lama::Loc2DROS loc2d_ros{"loc2d_ros"};
     rclcpp::spin(loc2d_ros.node);
+    rclcpp::shutdown();
     return 0;
 }

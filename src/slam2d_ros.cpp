@@ -115,7 +115,7 @@ lama::Slam2DROS::Slam2DROS(std::string name) :
     // Syncronized LaserScan messages with odometry transforms. This ensures that an odometry transformation
     // exists when the handler of a LaserScan message is called.
     laser_scan_sub_ = std::make_shared < message_filters::Subscriber < sensor_msgs::msg::LaserScan >> (
-            node, scan_topic_, rclcpp::QoS(rclcpp::SystemDefaultsQoS()).keep_last(100).get_rmw_qos_profile()); // 
+            node, scan_topic_, rclcpp::QoS(rclcpp::SystemDefaultsQoS()).keep_last(100).get_rmw_qos_profile());
     laser_scan_filter_ = std::make_shared < tf2_ros::MessageFilter < sensor_msgs::msg::LaserScan >> (
             *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
                     node->get_node_logging_interface(), node->get_node_clock_interface());
@@ -245,14 +245,14 @@ void lama::Slam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr la
         geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
-        RCLCPP_INFO(node->get_logger(), "Sent TF Map->Odom");
+        RCLCPP_DEBUG(node->get_logger(), "Sent TF Map->Odom");
     } else {
         // Nothing has changed, therefore, republish the last transform.
         rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
         geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
-        RCLCPP_INFO(node->get_logger(), "Nothing sent as TF Map->Odom");
+        RCLCPP_DEBUG(node->get_logger(), "Nothing sent as TF Map->Odom");
     } // end if (update)
 }
 
@@ -269,6 +269,7 @@ bool lama::Slam2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr lase
         return false;
     }
     tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
+
     // Validate laser orientation (code taken from slam_gmapping)
     // create a point 1m above the laser position and transform it into the laser-frame
     tf2::Vector3 v;
@@ -474,7 +475,6 @@ int main(int argc, char *argv[]) {
     }
 
     rclcpp::init(argc, argv);
-    
     lama::Slam2DROS slam2d_ros{"slam2d_ros"};
     slam2d_ros.node->declare_parameter("rosbag");
 
@@ -495,9 +495,7 @@ int main(int argc, char *argv[]) {
     }
     
     rclcpp::spin(slam2d_ros.node);
-    
     rclcpp::shutdown();
     return 0;
 }
-
 

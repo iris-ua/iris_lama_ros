@@ -592,6 +592,7 @@ int main(int argc, char *argv[]) {
     }
 
     rclcpp::spin(slam2d_ros.node);
+    rclcpp::shutdown();
     return 0;
 }
 
