@@ -2,27 +2,23 @@ LaMa ROS - Alternative Localization and Mapping for ROS.
 ========================================================
 https://github.com/iris-ua/iris_lama_ros
 
-Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019. Ported to ROS2 by David Simoes.
+Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019. Ported to ROS2 by David Simoes, University of Aveiro (C) 2020.
 
 Overview
 --------
 
-ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization and Mapping package from the **Intelligent Robotics and Systems** (IRIS) Laboratory, University of Aveiro. It provides 2D Localization and SLAM. It works great on a [TurtleBot2](https://www.turtlebot.com/turtlebot2/) with a [Raspberry Pi 3 Model B+](https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/) and an Hokuyo (Rapid URG).
+ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization and Mapping package from the **Intelligent Robotics and Systems** (IRIS) Laboratory, University of Aveiro. It provides 2D Localization and SLAM. It works great on a [TurtleBot2](https://www.turtlebot.com/turtlebot2/) with a [Raspberry Pi 3 Model B+](https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/) and an Hokuyo (Rapid URG). It also works on a simulated [TurtleBot3](http://emanual.robotis.com/docs/en/platform/turtlebot3/ros2_setup/).
 
 #### Environment
 
-Use Docker if you want a containerized environment. A `Dockerfile` is supplied, and you can create the environment with
+Use Docker if you want a containerized environment. A `Dockerfile` is supplied. If you are on an office network that blocks Google's DNS servers, [configure](https://stackoverflow.com/questions/44184496/configuring-options-for-docker-run/44184773#44184773) your DNS. It should be as simple as editing `/etc/docker/daemon.json` with your office's [DNS server](https://www.tecmint.com/find-my-dns-server-ip-address-in-linux/). 
 
-    sudo docker build -t "ros2:Dockerfile" .
-
-If you are on an office network that blocks Google's DNS servers, [configure](https://stackoverflow.com/questions/44184496/configuring-options-for-docker-run/44184773#44184773) your DNS. It should be as simple as editing `/etc/docker/daemon.json` with your office's [DNS server](https://www.tecmint.com/find-my-dns-server-ip-address-in-linux/). 
-
-To run the container, a suggestion is
+To deploy the container, a suggestion is
 
     wget https://partner-images.canonical.com/core/bionic/current/ubuntu-bionic-core-cloudimg-amd64-root.tar.gz
-    sudo docker build -t "ros2:Dockerfile" .
+    sudo docker build -t "ros2-eloquent:Dockerfile" .
     mkdir shared_folder/
-    sudo docker run -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2:Dockerfile" bash
+    sudo docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2_dashing:Dockerfile" bash
     ./ros_entrypoint.sh
     cd /mnt/iris_lama_ros2/
 
@@ -55,16 +51,16 @@ The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2
 
 ## SLAM nodes
 
-To create a map using *Online SLAM* execute
+Edit the `config/live.yaml` file with whatever parameters you wish to set. To create a map using *Online SLAM* execute
 ```
-ros2 run iris_lama_ros2 slam2d_ros --ros-args -p scan_topic:=base_scan
+ros2 launch iris_lama_ros2 slam2d_live.py
 ```
 and to create a map using *Particle Filter SLAM* execute
 ```
-ros2 run iris_lama_ros2 pf_slam2d_ros --ros-args -p scan_topic:=base_scan
+ros2 launch iris_lama_ros2 pf_slam2d_live.py
 ```
 
-Both nodes will publish to expected topics such as `/map` and `/tf`.
+Both nodes will publish to expected topics such as `map` and `tf`.
 
 ### Offline Mapping (rosbag)
 
@@ -116,12 +112,12 @@ Particle Filter SLAM only:
 
 ## Localization node
 
-This node requires the existence of the `/static_map` service to load the map.
+This node requires the existence of the `/map` service to load the map.
 To run the localization just execute
 ```
-rosrun iris_lama_ros loc2d_ros scan:=base_scan
+ros2 launch iris_lama_ros2 loc2d.py
 ```
-Please use `rviz` to set the initial pose. Global localization is not yet implemented.
+Please use `rviz2` to set the initial pose. Global localization is not yet implemented.
 
 ### Parameters
 

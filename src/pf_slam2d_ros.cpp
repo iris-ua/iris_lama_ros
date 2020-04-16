@@ -41,11 +41,11 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
     // Load parameters from the server.
     double tmp;
     node->declare_parameter("global_frame_id");
-    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("/map"));
+    node->get_parameter_or("global_frame_id", global_frame_id_, std::string("map"));
     node->declare_parameter("odom_frame_id");
-    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("/odom"));
+    node->get_parameter_or("odom_frame_id", odom_frame_id_, std::string("odom"));
     node->declare_parameter("base_frame_id");
-    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("/base_link"));
+    node->get_parameter_or("base_frame_id", base_frame_id_, std::string("base_link"));
     node->declare_parameter("scan_topic");
     node->get_parameter_or("scan_topic", scan_topic_, std::string("/scan"));
     node->declare_parameter("transform_tolerance");
@@ -135,7 +135,7 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
     // Syncronized LaserScan messages with odometry transforms. This ensures that an odometry transformation
     // exists when the handler of a LaserScan message is called.
     laser_scan_sub_ = std::make_shared < message_filters::Subscriber < sensor_msgs::msg::LaserScan >> (
-            node, scan_topic_, rclcpp::QoS(rclcpp::KeepLast(100)).get_rmw_qos_profile());
+            node, scan_topic_, rclcpp::QoS(rclcpp::SystemDefaultsQoS()).keep_last(100).get_rmw_qos_profile());
     laser_scan_filter_ = std::make_shared < tf2_ros::MessageFilter < sensor_msgs::msg::LaserScan >> (
             *laser_scan_sub_, *tf_buffer_, odom_frame_id_, 100,
                     node->get_node_logging_interface(), node->get_node_clock_interface());
@@ -160,7 +160,7 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
     // Setup service
     // https://index.ros.org/doc/ros2/Tutorials/Writing-A-Simple-Cpp-Service-And-Client/#write-the-service-node
     // https://answers.ros.org/question/299126/ros2-error-creating-a-service-server-as-a-member-function/
-    service = node->create_service<nav_msgs::srv::GetMap>("dynamic_map",
+    service = node->create_service<nav_msgs::srv::GetMap>("/dynamic_map",
                                                           std::bind(&PFSlam2DROS::onGetMap, this, std::placeholders::_1,
                                                                     std::placeholders::_2));
 
@@ -172,7 +172,6 @@ lama::PFSlam2DROS::~PFSlam2DROS() {
 }
 
 void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
-
     int laser_index = -1;
 
     // verify if it is from a known source
@@ -279,7 +278,7 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
             RCLCPP_WARN(node->get_logger(), "Failed to subtract base to odom transform");
             return;
         }
-        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_tf);
+        tf2::Stamped <tf2::Transform> odom_to_map = lama_utils::createStampedTransform(msg_odom_to_map);
 
         latest_tf_ = tf2::Transform(tf2::Quaternion(odom_to_map.getRotation()),
                                    tf2::Vector3(odom_to_map.getOrigin()));
@@ -318,13 +317,14 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
 
         RCLCPP_DEBUG(node->get_logger(), "Update time: %.3fms - NEFF: %.2f",
                 RCUTILS_NS_TO_MS((end-start).nanoseconds()), slam2d_->getNeff());
-
+	RCLCPP_DEBUG(node->get_logger(), "Sent TF Map->Odom");
     } else {
         // Nothing has change, therefore, republish the last transform.
         rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
         geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
+	RCLCPP_DEBUG(node->get_logger(), "Nothing sent as TF Map->Odom");
     } // end if (update)
 
     const size_t num_particles = slam2d_->getParticles().size();
@@ -576,6 +576,7 @@ int main(int argc, char *argv[]) {
     }
 
     rclcpp::spin(slam2d_ros.node);
+    rclcpp::shutdown();
     return 0;
 }
 
