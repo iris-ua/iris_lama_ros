@@ -2,12 +2,12 @@ LaMa ROS - Alternative Localization and Mapping for ROS.
 ========================================================
 https://github.com/iris-ua/iris_lama_ros
 
-Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019. Ported to ROS2 by David Simoes.
+Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019. Ported to ROS2 by David Simoes, University of Aveiro (C) 2020.
 
 Overview
 --------
 
-ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization and Mapping package from the **Intelligent Robotics and Systems** (IRIS) Laboratory, University of Aveiro. It provides 2D Localization and SLAM. It works great on a [TurtleBot2](https://www.turtlebot.com/turtlebot2/) with a [Raspberry Pi 3 Model B+](https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/) and an Hokuyo (Rapid URG).
+ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization and Mapping package from the **Intelligent Robotics and Systems** (IRIS) Laboratory, University of Aveiro. It provides 2D Localization and SLAM. It works great on a [TurtleBot2](https://www.turtlebot.com/turtlebot2/) with a [Raspberry Pi 3 Model B+](https://www.raspberrypi.org/products/raspberry-pi-3-model-b-plus/) and an Hokuyo (Rapid URG). It also works on a simulated [TurtleBot3](http://emanual.robotis.com/docs/en/platform/turtlebot3/ros2_setup/).
 
 #### Environment
 
@@ -22,11 +22,11 @@ To run the container, a suggestion is
     wget https://partner-images.canonical.com/core/bionic/current/ubuntu-bionic-core-cloudimg-amd64-root.tar.gz
     sudo docker build -t "ros2-dashing:Dockerfile" .
     mkdir shared_folder/
-    sudo docker run -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2-dashing:Dockerfile" bash
+    sudo docker run -e DISPLAY=$DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix -v $(pwd)/shared_folder:/mnt/iris_lama_ros2 -it "ros2_dashing:Dockerfile" bash
     ./ros_entrypoint.sh
     cd /mnt/iris_lama_ros2/
 
-This Dockerfile includes TurtleBot3 packages for easy testing and deployment. Remove the clutter if unnecessary.
+This Dockerfile includes TurtleBot3 packages for easy testing and deployment. Remove the clutter if unnecessary. Check the `start.sh` file for some guidelines. 
 
 #### Build
 
@@ -66,7 +66,7 @@ and to create a map using *Particle Filter SLAM* execute
 ros2 launch iris_lama_ros2 pf_slam2d_live.py
 ```
 
-Both nodes will publish to expected topics such as `/map` and `/tf`.
+Both nodes will publish to expected topics such as `map` and `tf`.
 
 ### Offline Mapping (rosbag)
 
@@ -118,10 +118,10 @@ Particle Filter SLAM only:
 
 ## Localization node
 
-This node requires the existence of the `/static_map` service to load the map.
+This node requires the existence of the `/map` service to load the map.
 To run the localization just execute
 ```
-ros2 launch iris_lama_ros2 loc2d_ros
+ros2 launch iris_lama_ros2 loc2d.py
 ```
 Please use `rviz2` to set the initial pose. Global localization is not yet implemented.
 

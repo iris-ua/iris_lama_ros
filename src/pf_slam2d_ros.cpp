@@ -317,14 +317,14 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
 
         RCLCPP_DEBUG(node->get_logger(), "Update time: %.3fms - NEFF: %.2f",
                 RCUTILS_NS_TO_MS((end-start).nanoseconds()), slam2d_->getNeff());
-        RCLCPP_INFO(node->get_logger(), "Sent TF Map->Odom");
+        RCLCPP_DEBUG(node->get_logger(), "Sent TF Map->Odom");
     } else {
         // Nothing has change, therefore, republish the last transform.
         rclcpp::Time transform_expiration = rclcpp::Time(laser_scan->header.stamp) + transform_tolerance_;
         geometry_msgs::msg::TransformStamped tmp_tf_stamped = lama_utils::createTransformStamped(
                 latest_tf_.inverse(), transform_expiration, global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
-        RCLCPP_INFO(node->get_logger(), "Nothing sent as TF Map->Odom");
+        RCLCPP_DEBUG(node->get_logger(), "Nothing sent as TF Map->Odom");
     } // end if (update)
 
     const size_t num_particles = slam2d_->getParticles().size();
