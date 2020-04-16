@@ -11,11 +11,7 @@ ROS integration of [LaMa]( https://github.com/iris-ua/iris_lama), a Localization
 
 #### Environment
 
-Use Docker if you want a containerized environment. A `Dockerfile` is supplied, and you can create the environment with
-
-    sudo docker build -t "ros2:Dockerfile" .
-
-If you are on an office network that blocks Google's DNS servers, [configure](https://stackoverflow.com/questions/44184496/configuring-options-for-docker-run/44184773#44184773) your DNS. It should be as simple as editing `/etc/docker/daemon.json` with your office's [DNS server](https://www.tecmint.com/find-my-dns-server-ip-address-in-linux/). 
+Use Docker if you want a containerized environment. A `Dockerfile` is supplied. If you are on an office network that blocks Google's DNS servers, [configure](https://stackoverflow.com/questions/44184496/configuring-options-for-docker-run/44184773#44184773) your DNS. It should be as simple as editing `/etc/docker/daemon.json` with your office's [DNS server](https://www.tecmint.com/find-my-dns-server-ip-address-in-linux/). 
 
 To run the container, a suggestion is
 
