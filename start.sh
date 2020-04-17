@@ -26,12 +26,12 @@ ros2 launch turtlebot3_bringup rviz2.launch.py
 	ros2 run turtlebot3_teleop teleop_keyboard
 
 	# Map making
-	ros2 launch iris_lama_ros2 pf_slam2d_live.py
+	ros2 launch iris_lama_ros2 pf_slam2d_live_launch.py
 	ros2 run nav2_map_server map_saver -f /mnt/myfolder/map
 
 	# Navigating
 	# TB3 doesnt have a planar sensor, so you need to uncomment line 336 of loc2d_ros.cpp and rebuild
-	ros2 launch iris_lama_ros2 loc2d.py
+	ros2 launch iris_lama_ros2 loc2d_launch.py
 
 	# show map
 	ros2 run nav2_map_server map_server __params:=map_server_params.yaml
