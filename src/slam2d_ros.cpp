@@ -469,10 +469,10 @@ void lama::Slam2DROS::printSummary() {
 }
 
 int main(int argc, char *argv[]) {
-    std::cout << argc << " params: " << std::endl;
-    for(int i=0; i<argc; ++i){
-        std::cout << "  " << argv[i] << std::endl;
-    }
+    //std::cout << argc << " params: " << std::endl;
+    //for(int i=0; i<argc; ++i){
+    //    std::cout << "  " << argv[i] << std::endl;
+    //}
 
     rclcpp::init(argc, argv);
     lama::Slam2DROS slam2d_ros{"slam2d_ros"};

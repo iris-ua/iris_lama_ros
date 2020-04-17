@@ -567,10 +567,10 @@ void lama::PFSlam2DROS::printSummary() {
 }
 
 int main(int argc, char *argv[]) {
-    std::cout << argc << " params: " << std::endl;
-    for(int i=0; i<argc; ++i){
-        std::cout << "  " << argv[i] << std::endl;
-    }
+    //std::cout << argc << " params: " << std::endl;
+    //for(int i=0; i<argc; ++i){
+    //    std::cout << "  " << argv[i] << std::endl;
+    //}
 
     rclcpp::init(argc, argv);
     lama::PFSlam2DROS slam2d_ros {"pf_slam2d_ros"};
