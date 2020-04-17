@@ -51,6 +51,8 @@ lama::Loc2DROS::Loc2DROS(const std::string &name) :
     node->get_parameter_or("transform_tolerance", tmp, 0.1);
     transform_tolerance_ = rclcpp::Duration::from_seconds(tmp);
 
+    loc2d_ = std::make_shared<Loc2D>();
+
     // Setup TF workers ...
     // https://github.com/ros-planning/navigation2/blob/eloquent-devel/nav2_costmap_2d/src/costmap_2d_ros.cpp
     tf_buffer_ = std::make_shared<tf2_ros::Buffer>(node->get_clock());
