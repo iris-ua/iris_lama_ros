@@ -55,11 +55,11 @@ The build was tested in the provided Dockerfile with **Ubuntu 18.04** and **ROS2
 
 Edit the `config/live.yaml` file with whatever parameters you wish to set. To create a map using *Online SLAM* execute
 ```
-ros2 launch iris_lama_ros2 slam2d_live.py
+ros2 launch iris_lama_ros2 slam2d_live_launch.py
 ```
 and to create a map using *Particle Filter SLAM* execute
 ```
-ros2 launch iris_lama_ros2 pf_slam2d_live.py
+ros2 launch iris_lama_ros2 pf_slam2d_live_launch.py
 ```
 
 Both nodes will publish to expected topics such as `map` and `tf`.
@@ -117,7 +117,7 @@ Particle Filter SLAM only:
 This node requires the existence of the `/map` service to load the map.
 To run the localization just execute
 ```
-ros2 launch iris_lama_ros2 loc2d.py
+ros2 launch iris_lama_ros2 loc2d_launch.py
 ```
 Please use `rviz2` to set the initial pose. Global localization is not yet implemented.
 
