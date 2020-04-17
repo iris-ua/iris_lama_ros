@@ -16,9 +16,9 @@ if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 # find dependencies
-find_package(ament_cmake REQUIRED)
+find_package(ament_cmake_ros REQUIRED)
 
-find_package(Eigen3 REQUIRED NO_MODULE)
+find_package(Eigen3 REQUIRED)
 
 find_package(tf2_ros REQUIRED)  #tf_ros
 find_package(tf2_geometry_msgs REQUIRED)
@@ -52,7 +52,7 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
 endif()
 
-ament_package()
-
-include_directories(include /usr/include/eigen3)  #TODO use some variable for eigen3
+include_directories(include ${EIGEN3_INCLUDE_DIR})
 add_subdirectory(src)
+
+ament_package()
