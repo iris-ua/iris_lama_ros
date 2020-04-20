@@ -329,7 +329,7 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
         RCLCPP_WARN(node->get_logger(),
                     "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
-        return false;
+        //return false;
     }
 
     double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());

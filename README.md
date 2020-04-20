@@ -29,22 +29,13 @@ This Dockerfile includes TurtleBot3 packages for easy testing and deployment. Re
 To build LaMa ROS2, clone it from GitHub and use `colcon` to build.
 ```
 cd /mnt/iris_lama_ros2/
-git clone https://github.com/iris-ua/iris_lama
-cd iris_lama
-mkdir build
-cd build
-cmake ..
-make
-
-cd /mnt/iris_lama_ros2/
 mkdir -p dev_ws/src
 cd dev_ws/src
+git clone https://github.com/iris-ua/iris_lama
 git clone https://github.com/iris-ua/iris_lama_ros
 cd iris_lama_ros
 git checkout dashing-devel
 cd ../..
-cp /mnt/iris_lama_ros2/iris_lama/build/src/libiris_lama.a /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros
-cp -r /mnt/iris_lama_ros2/iris_lama/include /mnt/iris_lama_ros2/dev_ws/src/iris_lama_ros/
 colcon build
 . install/setup.bash
 ```
