@@ -575,20 +575,13 @@ int main(int argc, char *argv[]) {
     rclcpp::init(argc, argv);
     lama::PFSlam2DROS slam2d_ros {"pf_slam2d_ros"};
     slam2d_ros.node->declare_parameter("rosbag");
-
-    std::string rosbag_filename;
-    if( !slam2d_ros.node->get_parameter("rosbag", rosbag_filename ) || rosbag_filename.empty()) {
-        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
-    } else{
+    bool using_rosbag;
+    slam2d_ros.node->get_parameter("rosbag", using_rosbag);
+    if(using_rosbag) {
         RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Rosbag Mode (offline)");
-        lama_utils::ReplayRosbag(slam2d_ros.node, rosbag_filename);
-
-        if (rclcpp::ok())
-            slam2d_ros.printSummary();
-
-        RCLCPP_INFO(slam2d_ros.node->get_logger(), "You can now save your map. Use ctrl-c to quit.");
-        // publish the maps a last time
-        slam2d_ros.publishMaps();
+        RCLCPP_INFO(slam2d_ros.node->get_logger(), "After the rosbag has finished, wait up to 'map_publish_period' for the map to be published. Save your map and use ctrl-c to quit.");
+    } else{
+        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
     }
 
     rclcpp::spin(slam2d_ros.node);

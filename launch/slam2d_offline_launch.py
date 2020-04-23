@@ -5,6 +5,7 @@ import launch.actions
 import pathlib
 
 def generate_launch_description():
+    bag_file = '/mnt/myfolder/dev2_ws/tb3bag/'
     # https://index.ros.org/doc/ros2/Tutorials/Launch-Files/Creating-Launch-Files/
     # https://answers.ros.org/question/311456/how-to-launch-a-node-with-a-parameter-in-ros2/
     # https://answers.ros.org/question/322874/ros2-what-is-different-between-declarelaunchargument-and-launchconfiguration/
@@ -26,5 +27,13 @@ def generate_launch_description():
             #],
             output='screen',
             parameters=[parameters_file_path],
+        ), 
+        launch.actions.ExecuteProcess(
+            cmd=['ros2', 'bag', 'info', bag_file],
+            output='screen'
+        ),
+        launch.actions.ExecuteProcess(
+            cmd=['ros2', 'bag', 'play', bag_file],
+            output='screen'
         )
     ])

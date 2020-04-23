@@ -4,8 +4,9 @@
 
 /iris_lama_ros2/slam2d_ros:
   ros__parameters:
-    scan_topic: "/base_scan"
-    rosbag: "/path/your/rosbag.db3"
+    rosbag: True
+    transform_tolerance: 0.1 
+    use_sim_time: True
 
     d_thresh: 0.5
     a_thresh: 0.5
@@ -18,9 +19,10 @@
 
 /iris_lama_ros2/pf_slam2d_ros:
   ros__parameters:
-    scan_topic: "/base_scan"
-    rosbag: "/path/your/rosbag.db3"
-
+    rosbag: True
+    transform_tolerance: 0.1
+    use_sim_time: True
+    
     particles: 30
     d_thresh: 0.5
     a_thresh: 0.5
