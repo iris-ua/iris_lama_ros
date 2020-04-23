@@ -56,8 +56,8 @@ Both nodes will publish to expected topics such as `map` and `tf`.
 ### Offline Mapping (rosbag)
 
 If you want to obtain a map from a rosbag and you want to save time (a lot),
-you can let iris_lama_ros "play" the rosbag for you. Just edit the `config/offline_mode.yaml` 
-file with the correct rosbag path.
+you can run rosbag2 alongside iris_lama_ros. Just edit the `launch/slam2d_offline_launch.py` and `launch/pf_slam2d_offline_launch.py` 
+files with the correct rosbag path.
 
 ```
 ros2 launch iris_lama_ros2 slam2d_offline_launch.py
