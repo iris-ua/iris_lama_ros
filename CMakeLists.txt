@@ -40,11 +40,9 @@ add_subdirectory(src)
 ## Install ##
 #############
 
-## Mark cpp header files for installation
-#install(DIRECTORY include/rtk/ros/
-#    DESTINATION ${CATKIN_PACKAGE_INCLUDE_DESTINATION}
-#    FILES_MATCHING PATTERN "*.h"
-#    PATTERN ".svn" EXCLUDE
-#)
+install(DIRECTORY launch/
+    DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
+    PATTERN ".svn" EXCLUDE
+)
 
 
