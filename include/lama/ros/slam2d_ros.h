@@ -55,10 +55,13 @@
 #include <lama/slam2d.h>
 #include <lama/pose3d.h>
 
+#include <Eigen/StdVector>
+
 namespace lama {
 
 class Slam2DROS {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     Slam2DROS();
     ~Slam2DROS();
@@ -104,7 +107,7 @@ private:
     // allow to handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
     std::vector<bool>          laser_is_reversed_;  ///< Vector that signals if the laser is reversed
-    std::vector<Pose3D>        lasers_origin_;  ///< Laser origin transformation
+    std::vector<Pose3D, Eigen::aligned_allocator<Pose3D>>        lasers_origin_;  ///< Laser origin transformation
     double max_range_;
 
     // maps

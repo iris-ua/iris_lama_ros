@@ -53,6 +53,8 @@
 #include <nav_msgs/OccupancyGrid.h>
 #include <nav_msgs/GetMap.h>
 
+#include <Eigen/StdVector>
+
 #include <lama/pose3d.h>
 #include <lama/pf_slam2d.h>
 
@@ -60,6 +62,7 @@ namespace lama {
 
 class PFSlam2DROS {
 public:
+    EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
     PFSlam2DROS();
     ~PFSlam2DROS();
@@ -107,7 +110,7 @@ private:
     // allow to handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
     std::vector<bool>          lasers_update_;  ///< Vector that signals which laser to update.
-    std::vector<Pose3D>        lasers_origin_;  ///< Laser origin transformation
+    std::vector<Pose3D, Eigen::aligned_allocator<Pose3D>>        lasers_origin_;  ///< Laser origin transformation
     double max_range_;
 
     // maps
