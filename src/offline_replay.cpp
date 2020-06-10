@@ -41,6 +41,8 @@
 
 #include "lama/ros/offline_replay.h"
 
+#include <algorithm>
+
 void lama::ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename)
 {
     std::string scan_topic;
@@ -82,7 +84,15 @@ void lama::ReplayRosbag(ros::NodeHandle& pnh, const std::string& rosbag_filename
         pub_clock.publish( clock_msg );
 
         if (m.getTopic() == "/tf") {
-            pub_tf.publish(m);
+            const auto msg = m.instantiate<tf2_msgs::TFMessage>();
+            if (msg)
+            {
+                if (std::none_of(msg->transforms.begin(), msg->transforms.end(),
+                                 [](const auto& transform) { return transform.header.frame_id == "map"; }))
+                {
+                    pub_tf.publish(m);
+                }
+            }
         } else if (m.getTopic() == "/tf_static") {
             pub_tf_static.publish(m);
         } else if( m.getTopic() == scan_topic) {
