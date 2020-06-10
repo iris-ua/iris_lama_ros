@@ -152,8 +152,10 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
         catch(tf::TransformException& e)
         { ROS_ERROR("Could not find origin of %s", laser_scan->header.frame_id.c_str()); return; }
 
+        double roll, pitch, yaw;
+        laser_origin.getBasis().getRPY(roll, pitch, yaw);
         Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  0, 0, tf::getYaw(laser_origin.getRotation()));
+                  roll, pitch, yaw);
 
         lasers_origin_.push_back( lp );
 
