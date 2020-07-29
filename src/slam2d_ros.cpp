@@ -156,7 +156,7 @@ void lama::Slam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr la
     } else {
         laser_index = frame_to_laser_[laser_scan->header.frame_id];
     }
-    
+
     // Where was the robot at the time of the scan ?
     geometry_msgs::msg::PoseStamped msg_odom_tf;
     try {
@@ -198,10 +198,7 @@ void lama::Slam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr la
         for (size_t i = 0; i < size; i += beam_step) {
             double range;
 
-            if (laser_is_reversed_[laser_index])
-                range = laser_scan->ranges[size - i - 1];
-            else
-                range = laser_scan->ranges[i];
+            range = laser_scan->ranges[i];
 
             if (not std::isfinite(range))
                 continue;
@@ -270,49 +267,14 @@ bool lama::Slam2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr lase
     }
     tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
 
-    // Validate laser orientation (code taken from slam_gmapping)
-    // create a point 1m above the laser position and transform it into the laser-frame
-    tf2::Vector3 v;
-    v.setValue(0, 0, 1 + laser_origin.getOrigin().z());
+    double roll, pitch, yaw;
+    laser_origin.getBasis().getRPY(roll, pitch, yaw);
 
-    geometry_msgs::msg::Vector3Stamped msg_up;
-    try {
-        geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = lama_utils::createVector3Stamped(
-                v, rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
-        tf_buffer_->transform(msg_up_baseFrame, msg_up, laser_scan->header.frame_id);
-        RCLCPP_DEBUG(node->get_logger(), "Z-Axis in sensor frame: %.3f", msg_up.vector.z);
-    } catch (tf2::TransformException &e) {
-        RCLCPP_ERROR(node->get_logger(), "Unable to determine orientation of laser: %s", e.what());
-        return false;
-    }
-    tf2::Stamped <tf2::Vector3> up = lama_utils::createStampedVector3(msg_up);
-
-    // we do not take roll or pitch into account. So check for correct sensor alignment.
-    if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
-        RCLCPP_WARN(node->get_logger(),
-                "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
-        return false;
-    }
-
-    double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
-
-    if (up.z() > 0) {
-        laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  0, 0, laser_origin_yaw);
-
-        lasers_origin_.push_back(lp);
-        RCLCPP_INFO(node->get_logger(), "Laser is mounted upwards.");
-    } else {
-        laser_is_reversed_.push_back(laser_scan->angle_min < laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  M_PI, 0, laser_origin_yaw);
-
-        lasers_origin_.push_back(lp);
-        RCLCPP_INFO(node->get_logger(), "Laser is mounted upside down.");
-    }
+    lama::Pose3D lp(laser_origin.getOrigin().x(),
+                    laser_origin.getOrigin().y(),
+                    laser_origin.getOrigin().z(),
+                    roll, pitch, yaw);
+    lasers_origin_.push_back(lp);
 
     int laser_index = (int) frame_to_laser_.size();  // simple ID generator :)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
@@ -485,7 +447,7 @@ int main(int argc, char *argv[]) {
     } else{
         RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
     }
-    
+
     rclcpp::spin(slam2d_ros.node);
     rclcpp::shutdown();
     return 0;
