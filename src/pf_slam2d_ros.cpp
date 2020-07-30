@@ -193,10 +193,13 @@ void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr 
             return;
         }
         tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
+        double roll, pitch, yaw;
+        laser_origin.getBasis().getRPY(roll, pitch, yaw);
 
-        double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
-        Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                  0, 0, laser_origin_yaw);
+        lama::Pose3D lp(laser_origin.getOrigin().x(),
+                        laser_origin.getOrigin().y(),
+                        laser_origin.getOrigin().z(),
+                        roll, pitch, yaw);
 
         lasers_origin_.push_back(lp);
 
