@@ -108,5 +108,6 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~l2_max`: Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters).
 * `~strategy`: Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn").
 * `~patch_size`: Length of a patch (default: 32 cells).
-
-
+* `~use_map_topic`: True to subscribe to the `/map` topic instead of requesting the map through the "`static_map`" service (default: `false`).
+* `~first_map_only`: True to use only the first map ever received (default: `false`).
+* `~use_pose_on_new_map`: True to use the current algorithm pose when the map changes (default: `false`).
