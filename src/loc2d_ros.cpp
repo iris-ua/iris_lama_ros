@@ -51,6 +51,7 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("transform_tolerance", tmp, 0.1); transform_tolerance_.fromSec(tmp);
 
     pnh_.param("use_map_topic", use_map_topic_, false);
+    pnh_.param("first_map_only", first_map_only_, false);
     pnh_.param("use_pose_on_new_map", use_pose_on_new_map_, false);
 
     // Setup TF workers ...
@@ -230,7 +231,10 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
 
 void lama::Loc2DROS::onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
+    if (first_map_only_ and first_map_received_)
+        return;
     InitLoc2DFromOccupancyGridMsg(use_pose_on_new_map_ ? loc2d_.getPose() : initial_prior_, *msg);
+    first_map_received_ = true;
 }
 
 void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const nav_msgs::OccupancyGrid& msg)

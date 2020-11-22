@@ -118,6 +118,8 @@ private:
     std::string scan_topic_;   ///< LaserScan message topic.
 
     bool use_map_topic_; ///< True to subscribe to the map topic instead of requesting the map through the "static_map" service
+    bool first_map_only_; ///< True to use only the first map ever received
+    bool first_map_received_; ///< True if the first map has already been received
     bool use_pose_on_new_map_; ///< True to use the current algorithm pose when the map changes
 
     // == Inner state ==
