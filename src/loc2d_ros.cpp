@@ -50,6 +50,8 @@ lama::Loc2DROS::Loc2DROS()
 
     pnh_.param("transform_tolerance", tmp, 0.1); transform_tolerance_.fromSec(tmp);
 
+    pnh_.param("use_map_topic", use_map_topic_, false);
+
     // Setup TF workers ...
     tf_ = new tf::TransformListener();
     tfb_= new tf::TransformBroadcaster();
@@ -66,16 +68,24 @@ lama::Loc2DROS::Loc2DROS()
     // Set publishers
     pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pose", 10);
 
-    ROS_INFO("Requesting the map...");
-    nav_msgs::GetMap::Request  req;
-    nav_msgs::GetMap::Response resp;
-    while(ros::ok() and not ros::service::call("static_map", req, resp)){
-        ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
-        ros::Duration d(0.5);
-        d.sleep();
-    }// end while
+    // Request the map if not using the map topic
+    if (not use_map_topic_)
+    {
+        ROS_INFO("Requesting the map...");
+        nav_msgs::GetMap::Request  req;
+        nav_msgs::GetMap::Response resp;
+        while(ros::ok() and not ros::service::call("static_map", req, resp)){
+            ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
+            ros::Duration d(0.5);
+            d.sleep();
+        }// end while
 
-    InitLoc2DFromOccupancyGridMsg(resp.map);
+        InitLoc2DFromOccupancyGridMsg(resp.map);
+    }
+    else
+    {
+        map_sub_ = nh_.subscribe("/map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
+    }
 
     ROS_INFO("2D Localization node up and running");
 }
