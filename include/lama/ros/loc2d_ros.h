@@ -67,12 +67,18 @@ public:
 
     void onInitialPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr& initial_pose);
     void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
+    void onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
     //bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
 
 private:
 
-    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg);
+    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg)
+    {
+        InitLoc2DFromOccupancyGridMsg(initial_prior_, msg);
+    }
+
+    void InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const nav_msgs::OccupancyGrid& msg);
 
     bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);
 
@@ -96,6 +102,7 @@ private:
 
     // Subscribers
     ros::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
+    ros::Subscriber map_sub_; ///< Subscriber of the map; used if \p use_map_topic_ is true.
 
     // == Laser stuff ==
     // Handle multiple lasers at once
@@ -110,9 +117,16 @@ private:
 
     std::string scan_topic_;   ///< LaserScan message topic.
 
+    bool use_map_topic_; ///< True to subscribe to the map topic instead of requesting the map through the "static_map" service
+    bool first_map_only_; ///< True to use only the first map ever received
+    bool first_map_received_; ///< True if the first map has already been received
+    bool use_pose_on_new_map_; ///< True to use the current algorithm pose when the map changes
+
     // == Inner state ==
     Loc2D   loc2d_;
     Pose2D odom_;
+    Loc2D::Options options_;
+    Pose2D initial_prior_;
 };
 
 } /* lama */

@@ -50,6 +50,10 @@ lama::Loc2DROS::Loc2DROS()
 
     pnh_.param("transform_tolerance", tmp, 0.1); transform_tolerance_.fromSec(tmp);
 
+    pnh_.param("use_map_topic", use_map_topic_, false);
+    pnh_.param("first_map_only", first_map_only_, false);
+    pnh_.param("use_pose_on_new_map", use_pose_on_new_map_, false);
+
     // Setup TF workers ...
     tf_ = new tf::TransformListener();
     tfb_= new tf::TransformBroadcaster();
@@ -66,16 +70,40 @@ lama::Loc2DROS::Loc2DROS()
     // Set publishers
     pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pose", 10);
 
-    ROS_INFO("Requesting the map...");
-    nav_msgs::GetMap::Request  req;
-    nav_msgs::GetMap::Response resp;
-    while(ros::ok() and not ros::service::call("static_map", req, resp)){
-        ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
-        ros::Duration d(0.5);
-        d.sleep();
-    }// end while
+    // Fetch algorithm options
+    Vector2d pos; double init_a;
+    pnh_.param("initial_pos_x", pos[0], 0.0);
+    pnh_.param("initial_pos_y", pos[1], 0.0);
+    pnh_.param("initial_pos_a", init_a, 0.0);
+    initial_prior_ = lama::Pose2D(pos, init_a);
 
-    InitLoc2DFromOccupancyGridMsg(resp.map);
+    pnh_.param("d_thresh", options_.trans_thresh, 0.01);
+    pnh_.param("a_thresh", options_.rot_thresh, 0.2);
+    pnh_.param("l2_max",   options_.l2_max, 0.5);
+    pnh_.param("strategy", options_.strategy, std::string("gn"));
+
+    // Request the map if not using the map topic
+    if (not use_map_topic_)
+    {
+        ROS_INFO("Requesting the map...");
+        nav_msgs::GetMap::Request  req;
+        nav_msgs::GetMap::Response resp;
+        while(ros::ok() and not ros::service::call("static_map", req, resp)){
+            ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
+            ros::Duration d(0.5);
+            d.sleep();
+        }// end while
+
+        int itmp;
+        pnh_.param("patch_size", itmp, 32);
+        options_.patch_size = itmp;
+
+        InitLoc2DFromOccupancyGridMsg(initial_prior_, resp.map);
+    }
+    else
+    {
+        map_sub_ = nh_.subscribe("/map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
+    }
 
     ROS_INFO("2D Localization node up and running");
 }
@@ -201,38 +229,30 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
     } // end if (update)
 }
 
-void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg)
+void lama::Loc2DROS::onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
 {
-    Vector2d pos; double tmp;
-    pnh_.param("initial_pos_x", pos[0], 0.0);
-    pnh_.param("initial_pos_y", pos[1], 0.0);
-    pnh_.param("initial_pos_a", tmp, 0.0);
-    lama::Pose2D prior(pos, tmp);
+    if (first_map_only_ and first_map_received_)
+        return;
+    InitLoc2DFromOccupancyGridMsg(use_pose_on_new_map_ ? loc2d_.getPose() : initial_prior_, *msg);
+    first_map_received_ = true;
+}
 
-    Loc2D::Options options;
-    pnh_.param("d_thresh", options.trans_thresh, 0.01);
-    pnh_.param("a_thresh", options.rot_thresh, 0.2);
-    pnh_.param("l2_max",   options.l2_max, 0.5);
-    pnh_.param("strategy", options.strategy, std::string("gn"));
-
-    int itmp;
-    pnh_.param("patch_size", itmp, 32);
-    options.patch_size = itmp;
-
-    options.resolution = msg.info.resolution;
-
-    loc2d_.Init(options);
+void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const nav_msgs::OccupancyGrid& msg)
+{
+    options_.resolution = msg.info.resolution;
+    loc2d_.Init(options_);
     loc2d_.setPose(prior);
 
     ROS_INFO("Localization parameters: d_thresh: %.2f, a_thresh: %.2f, l2_max: %.2f",
-             options.trans_thresh, options.rot_thresh, options.l2_max);
+             options_.trans_thresh, options_.rot_thresh, options_.l2_max);
 
     unsigned int width = msg.info.width;
     unsigned int height= msg.info.height;
 
     for (unsigned int j = 0; j < height; ++j)
-        for (unsigned int i = 0; i < width;  ++i){
-
+    {
+        for (unsigned int i = 0; i < width;  ++i)
+        {
             Vector3d coords;
             coords.x() = msg.info.origin.position.x + i * msg.info.resolution;
             coords.y() = msg.info.origin.position.y + j * msg.info.resolution;
@@ -244,7 +264,8 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid
                 loc2d_.occupancy_map->setOccupied(coords);
                 loc2d_.distance_map->addObstacle(loc2d_.distance_map->w2m(coords));
             }
-        }// end for
+        }
+    }
 
     loc2d_.distance_map->update();
 }
