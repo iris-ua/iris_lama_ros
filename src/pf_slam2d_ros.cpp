@@ -73,6 +73,7 @@ lama::PFSlam2DROS::PFSlam2DROS()
     pnh_.param("a_thresh",   options.rot_thresh,      0.25);
     pnh_.param("l2_max",     options.l2_max,           0.5);
     pnh_.param("truncate",   options.truncated_ray,    0.0);
+    pnh_.param("truncate_range", options.truncated_range, 0.0);
     pnh_.param("resolution", options.resolution,      0.05);
     pnh_.param("strategy", options.strategy, std::string("gn"));
     pnh_.param("use_compression",       options.use_compression, false);
