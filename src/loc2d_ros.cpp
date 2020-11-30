@@ -131,6 +131,9 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::PoseWithCovarianceStampe
 
 void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan)
 {
+    if (not first_map_received_)
+        return;
+
     int laser_index = -1;
 
     // verify if it is from a known source
@@ -234,7 +237,6 @@ void lama::Loc2DROS::onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
     if (first_map_only_ and first_map_received_)
         return;
     InitLoc2DFromOccupancyGridMsg(use_pose_on_new_map_ ? loc2d_.getPose() : initial_prior_, *msg);
-    first_map_received_ = true;
 }
 
 void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const nav_msgs::OccupancyGrid& msg)
@@ -268,6 +270,7 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const na
     }
 
     loc2d_.distance_map->update();
+    first_map_received_ = true;
 }
 
 bool lama::Loc2DROS::initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan)
