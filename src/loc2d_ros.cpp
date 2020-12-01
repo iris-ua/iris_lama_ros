@@ -54,6 +54,8 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("first_map_only", first_map_only_, false);
     pnh_.param("use_pose_on_new_map", use_pose_on_new_map_, false);
 
+    pnh_.param("force_update_on_initial_pose", force_update_on_initial_pose_, false);
+
     // Setup TF workers ...
     tf_ = new tf::TransformListener();
     tfb_= new tf::TransformBroadcaster();
@@ -126,10 +128,14 @@ void lama::Loc2DROS::onInitialPose(const geometry_msgs::PoseWithCovarianceStampe
     float y = initial_pose->pose.pose.position.y;
     float yaw = tf::getYaw(initial_pose->pose.pose.orientation);
 
-    ROS_INFO("Setting pose to (%f, %f, %f)", x, y ,yaw);
-    lama::Pose2D pose(x, y, yaw);
+    onInitialPose(lama::Pose2D(x, y, yaw));
+}
 
-    loc2d_.setPose(pose);
+void lama::Loc2DROS::onInitialPose(const Pose2D& prior)
+{
+    ROS_INFO("Setting pose to (%f, %f, %f)", prior.x(), prior.y() ,prior.rotation());
+    loc2d_.setPose(prior);
+    force_update_ = force_update_on_initial_pose_;
 }
 
 void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -246,7 +252,7 @@ void lama::Loc2DROS::InitLoc2DFromOccupancyGridMsg(const Pose2D& prior, const na
 {
     options_.resolution = msg.info.resolution;
     loc2d_.Init(options_);
-    loc2d_.setPose(prior);
+    onInitialPose(prior);
 
     ROS_INFO("Localization parameters: d_thresh: %.2f, a_thresh: %.2f, l2_max: %.2f",
              options_.trans_thresh, options_.rot_thresh, options_.l2_max);

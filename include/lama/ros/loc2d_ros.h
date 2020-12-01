@@ -68,6 +68,7 @@ public:
     ~Loc2DROS();
 
     void onInitialPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr& initial_pose);
+    void onInitialPose(const Pose2D& prior);
     void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan);
     void onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg);
 
@@ -114,6 +115,7 @@ private:
 
     // Service providers
     ros::ServiceServer srv_update_; ///< Service to trigger a scan match
+
     // == Laser stuff ==
     // Handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
@@ -132,6 +134,7 @@ private:
     bool first_map_received_; ///< True if the first map has already been received
     bool use_pose_on_new_map_; ///< True to use the current algorithm pose when the map changes
     bool force_update_; ///< True to force an update when a new laser scan is received
+    bool force_update_on_initial_pose_; ///< True to trigger a forced updated when an initial pose is received
 
     // == Inner state ==
     Loc2D   loc2d_;
