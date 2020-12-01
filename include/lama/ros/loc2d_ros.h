@@ -50,6 +50,8 @@
 #include <sensor_msgs/LaserScan.h>
 // maps
 #include <nav_msgs/OccupancyGrid.h>
+// Force triggering a no-motion update
+#include <std_srvs/Empty.h>
 
 #include <lama/pose3d.h>
 #include <lama/loc2d.h>
@@ -82,6 +84,12 @@ private:
 
     bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);
 
+    bool onTriggerUpdate(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
+    {
+        force_update_ = true;
+        return true;
+    }
+
 private:
 
     // == ROS stuff ==
@@ -104,6 +112,8 @@ private:
     ros::Subscriber pose_sub_;   ///< Subscriber of the initial pose (with covariance)
     ros::Subscriber map_sub_; ///< Subscriber of the map; used if \p use_map_topic_ is true.
 
+    // Service providers
+    ros::ServiceServer srv_update_; ///< Service to trigger a scan match
     // == Laser stuff ==
     // Handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
@@ -121,6 +131,7 @@ private:
     bool first_map_only_; ///< True to use only the first map ever received
     bool first_map_received_; ///< True if the first map has already been received
     bool use_pose_on_new_map_; ///< True to use the current algorithm pose when the map changes
+    bool force_update_; ///< True to force an update when a new laser scan is received
 
     // == Inner state ==
     Loc2D   loc2d_;

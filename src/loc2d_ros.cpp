@@ -70,6 +70,9 @@ lama::Loc2DROS::Loc2DROS()
     // Set publishers
     pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pose", 10);
 
+    // Services
+    srv_update_ = nh_.advertiseService("/request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
+
     // Fetch algorithm options
     Vector2d pos; double init_a;
     pnh_.param("initial_pos_x", pos[0], 0.0);
@@ -157,10 +160,9 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
     lama::Pose2D odom(odom_tf.getOrigin().x(), odom_tf.getOrigin().y(),
                               tf::getYaw(odom_tf.getRotation()));
 
-    bool update = loc2d_.enoughMotion(odom);
+    bool update = force_update_ or loc2d_.enoughMotion(odom);
 
     if (update){
-
         size_t size = laser_scan->ranges.size();
         size_t beam_step = 1;
 
@@ -198,7 +200,8 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
             cloud->points.push_back( point );
         }
 
-        loc2d_.update(cloud, odom, laser_scan->header.stamp.toSec());
+        loc2d_.update(cloud, odom, laser_scan->header.stamp.toSec(), force_update_);
+        force_update_ = false;
 
         Pose2D pose = loc2d_.getPose();
         // subtracting base to odom from map to base and send map to odom instead
