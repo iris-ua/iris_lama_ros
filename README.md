@@ -94,6 +94,9 @@ rosrun iris_lama_ros loc2d_ros scan:=base_scan
 ```
 Please use `rviz` to set the initial pose. Global localization is not yet implemented.
 
+### Services
+
+* `/request_nomotion_update`: Called to trigger an update without moving the robot (no-motion update)
 ### Parameters
 
 * `~global_frame_id`: The frame attached to the map (default: "map").
@@ -111,3 +114,4 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~use_map_topic`: True to subscribe to the `/map` topic instead of requesting the map through the "`static_map`" service (default: `false`).
 * `~first_map_only`: True to use only the first map ever received (default: `false`).
 * `~use_pose_on_new_map`: True to use the current algorithm pose when the map changes (default: `false`).
+* `~force_update_on_initial_pose`: True to trigger a no-motion update when an initial pose is received (default: `false`)
