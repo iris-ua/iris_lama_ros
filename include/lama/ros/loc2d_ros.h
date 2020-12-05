@@ -50,7 +50,7 @@
 #include <sensor_msgs/LaserScan.h>
 // maps
 #include <nav_msgs/OccupancyGrid.h>
-// Force triggering a no-motion update
+// Force triggering a no-motion update and global localization.
 #include <std_srvs/Empty.h>
 
 #include <lama/pose3d.h>
@@ -76,7 +76,8 @@ public:
 
 private:
 
-    void InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg)
+    // keep old API
+    inline void InitLoc2DFromOccupancyGridMsg(const nav_msgs::OccupancyGrid& msg)
     {
         InitLoc2DFromOccupancyGridMsg(initial_prior_, msg);
     }
@@ -85,11 +86,10 @@ private:
 
     bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan);
 
-    bool onTriggerUpdate(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
-    {
-        force_update_ = true;
-        return true;
-    }
+    // A localization update can be forced by an external trigger.
+    bool onTriggerUpdate(std_srvs::Empty::Request&, std_srvs::Empty::Response&);
+    // Trigger a global localization procedure.
+    bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp);
 
 private:
 
@@ -115,6 +115,7 @@ private:
 
     // Service providers
     ros::ServiceServer srv_update_; ///< Service to trigger a scan match
+    ros::ServiceServer srv_global_loc_; ///< Used to trigger global localization on request.
 
     // == Laser stuff ==
     // Handle multiple lasers at once

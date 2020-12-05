@@ -74,6 +74,7 @@ lama::Loc2DROS::Loc2DROS()
 
     // Services
     srv_update_ = nh_.advertiseService("/request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
+    srv_global_loc_ = nh_.advertiseService("global_localization", &Loc2DROS::globalLocalizationCallback, this);
 
     // Fetch algorithm options
     Vector2d pos; double init_a;
@@ -82,10 +83,19 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("initial_pos_a", init_a, 0.0);
     initial_prior_ = lama::Pose2D(pos, init_a);
 
-    pnh_.param("d_thresh", options_.trans_thresh, 0.01);
+    pnh_.param("d_thresh", options_.trans_thresh, 0.1);
     pnh_.param("a_thresh", options_.rot_thresh, 0.2);
     pnh_.param("l2_max",   options_.l2_max, 0.5);
     pnh_.param("strategy", options_.strategy, std::string("gn"));
+
+    int dummy;
+    pnh_.param("gloc_particles", dummy, 3000);
+    options_.gloc_particles = dummy;
+
+    pnh_.param("gloc_iters", dummy, 20);
+    options_.gloc_iters= dummy;
+
+    pnh_.param("gloc_thresh", options_.gloc_thresh, 0.15);
 
     // Request the map if not using the map topic
     if (not use_map_topic_)
@@ -108,6 +118,14 @@ lama::Loc2DROS::Loc2DROS()
     else
     {
         map_sub_ = nh_.subscribe("/map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
+    }
+
+    // Should trigger an initial global localization?
+    bool do_global_loc;
+    pnh_.param("do_global_loc", do_global_loc, false);
+    if (do_global_loc){
+        ROS_INFO("Trigger Global Localization");
+        loc2d_.triggerGlobalLocalization();
     }
 
     ROS_INFO("2D Localization node up and running");
@@ -208,6 +226,11 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
 
         loc2d_.update(cloud, odom, laser_scan->header.stamp.toSec(), force_update_);
         force_update_ = false;
+
+        // Report global localization if enables
+        if (loc2d_.globalLocalizationIsActive()){
+            ROS_INFO("Global Localization RMSE: %f", loc2d_.getRMSE());
+        }
 
         Pose2D pose = loc2d_.getPose();
         // subtracting base to odom from map to base and send map to odom instead
@@ -333,6 +356,20 @@ bool lama::Loc2DROS::initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
 
     ROS_INFO("New laser configured (id=%d frame_id=%s)", laser_index, laser_scan->header.frame_id.c_str() );
+    return true;
+}
+
+bool lama::Loc2DROS::onTriggerUpdate(std_srvs::Empty::Request&, std_srvs::Empty::Response&)
+{
+    ROS_INFO("Forced localization update Triggered");
+    force_update_ = true;
+    return true;
+}
+
+bool lama::Loc2DROS::globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp)
+{
+    ROS_INFO("Global Localization Triggered");
+    loc2d_.triggerGlobalLocalization();
     return true;
 }
 

@@ -97,6 +97,8 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 ### Services
 
 * `/request_nomotion_update`: Called to trigger an update without moving the robot (no-motion update)
+* `/global_localization`: Called to trigger a global localization procedure.
+
 ### Parameters
 
 * `~global_frame_id`: The frame attached to the map (default: "map").
@@ -115,3 +117,6 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~first_map_only`: True to use only the first map ever received (default: `false`).
 * `~use_pose_on_new_map`: True to use the current algorithm pose when the map changes (default: `false`).
 * `~force_update_on_initial_pose`: True to trigger a no-motion update when an initial pose is received (default: `false`)
+* `~gloc_particles`: Number of particles used to find the best global localization (default: 3000)
+* `~gloc_thresh`: Value at which a global localization particle is considered viable. (default: 0.15 RMSE)
+* `~gloc_iters`: Maximum number of iterations executed by the global localization procedure (default: 20)

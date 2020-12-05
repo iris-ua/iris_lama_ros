@@ -87,9 +87,8 @@ private:
     ros::NodeHandle pnh_; ///< Private ros node handle.
 
     ros::Timer periodic_publish_; /// timer user to publish periodically the maps
-
-    tf::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
     tf::TransformListener*    tf_;  ///< Gloabal transform listener.
+    tf::TransformBroadcaster* tfb_; ///< Position transform broadcaster.
 
     tf::Transform latest_tf_; ///< The most recent transform.
 
