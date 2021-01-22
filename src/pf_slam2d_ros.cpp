@@ -48,9 +48,9 @@ lama::PFSlam2DROS::PFSlam2DROS()
     // Load parameters from the server.
     double tmp;
 
-    pnh_.param("global_frame_id", global_frame_id_, std::string("/map"));
-    pnh_.param("odom_frame_id",   odom_frame_id_,   std::string("/odom"));
-    pnh_.param("base_frame_id",   base_frame_id_,   std::string("/base_link"));
+    pnh_.param("global_frame_id", global_frame_id_, std::string("map"));
+    pnh_.param("odom_frame_id",   odom_frame_id_,   std::string("odom"));
+    pnh_.param("base_frame_id",   base_frame_id_,   std::string("base_link"));
 
     pnh_.param("scan_topic", scan_topic_, std::string("/scan"));
 
