@@ -54,7 +54,7 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 ### Parameters
 
 * `~global_frame_id`: The frame attached to the map (default: "map").
-* `~odom_frame_id`: The frame attached to the odometry system (default: "odometry").
+* `~odom_frame_id`: The frame attached to the odometry system (default: "odom").
 * `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
 * `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
 * `~initial_pos_x`: Initial x position (default: 0 meters).
