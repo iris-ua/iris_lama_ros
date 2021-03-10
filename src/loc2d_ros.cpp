@@ -204,10 +204,7 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
         for(size_t i = 0; i < size; i += beam_step ){
             double range;
 
-            if (laser_is_reversed_[laser_index])
-                range = laser_scan->ranges[size - i - 1];
-            else
-                range = laser_scan->ranges[i];
+            range = laser_scan->ranges[i];
 
             if (not std::isfinite(range))
                 continue;
@@ -315,42 +312,17 @@ bool lama::Loc2DROS::initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan)
     catch(tf::TransformException& e)
     { ROS_ERROR("Could not find origin of %s", laser_scan->header.frame_id.c_str()); return false; }
 
-    // Validate laser orientation (code taken from slam_gmapping)
-    // create a point 1m above the laser position and transform it into the laser-frame
-    tf::Vector3 v;
-    v.setValue(0, 0, 1 + laser_origin.getOrigin().z());
-    tf::Stamped<tf::Vector3> up(v, laser_scan->header.stamp, base_frame_id_);
-    try {
-        tf_->transformPoint(laser_scan->header.frame_id, up, up);
-        ROS_DEBUG("Z-Axis in sensor frame: %.3f", up.z());
-    } catch(tf::TransformException& e) {
-        ROS_ERROR("Unable to determine orientation of laser: %s", e.what());
-        return false;
-    }
+    tf::Matrix3x3 mat(laser_origin.getRotation());
+    tfScalar yaw, pitch, roll;
+    mat.getEulerYPR(yaw, pitch, roll);
 
-    // we do not take roll or pitch into account. So check for correct sensor alignment.
-    if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
-        ROS_WARN("Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
-        return false;
-    }
+    lama::Pose3D lp(laser_origin.getOrigin().x(),
+                    laser_origin.getOrigin().y(),
+                    laser_origin.getOrigin().z(),
+                    roll, pitch, yaw);
 
-    if (up.z() > 0) {
-        laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                             0, 0, tf::getYaw(laser_origin.getRotation()));
-
-        lasers_origin_.push_back( lp );
+    lasers_origin_.push_back( lp );
         ROS_INFO("Laser is mounted upwards.");
-    } else {
-        laser_is_reversed_.push_back(laser_scan->angle_min < laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                             M_PI, 0, tf::getYaw(laser_origin.getRotation()));
-
-        lasers_origin_.push_back( lp );
-        ROS_INFO("Laser is mounted upside down.");
-    }
 
     int laser_index = (int)frame_to_laser_.size();  // simple ID generator :)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
