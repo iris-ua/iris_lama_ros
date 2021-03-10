@@ -120,7 +120,6 @@ private:
     // == Laser stuff ==
     // Handle multiple lasers at once
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
-    std::vector<bool>          laser_is_reversed_;;  ///< Vector that signals if the laser is reversed
     std::vector<Pose3D>        lasers_origin_;  ///< Laser origin transformation
 
     // == configuration variables ==
