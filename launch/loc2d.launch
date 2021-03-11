@@ -1,0 +1,62 @@
+<launch>
+
+    <arg name="initial_pose_x" default="0.0"/>
+    <arg name="initial_pose_y" default="0.0"/>
+    <arg name="initial_yaw"  default="0.0"/>
+
+    <node pkg="iris_lama_ros" type="loc2d_ros" name="loc2d_ros" output="screen">
+
+        <!-- The frame attached to the map (default: "map"). -->
+        <param name="global_frame_id" value="map"/>
+        <!-- The frame attached to the odometry system (default: "odometry"). -->
+        <param name="odom_frame_id" value="odom"/>
+        <!-- The frame attached to the mobile base (default: "base_link"). -->
+        <param name="base_frame_id" value="base_link"/>
+
+        <!-- Laser scan topic to subscribe (default: "/scan"). -->
+        <param name="scan_topic" value="scan"/>
+
+        <!--  -->
+        <param name="transform_tolerance" value="0.1"/>
+
+        <!-- True to subscribe to the /map topic instead of requesting the map through the "static_map" service (default: false). -->
+        <param name="use_map_topic" value="false"/>
+        <!-- True to use only the first map ever received (default: false). -->
+        <param name="first_map_only" value="false"/>
+        <!-- True to use the current algorithm pose when the map changes (default: false). -->
+        <param name="use_pose_on_new_map" value="false"/>
+        <!-- True to trigger a no-motion update when an initial pose is received (default: false) -->
+        <param name="force_update_on_initial_pose" value="false"/>
+
+        <!-- Initial x position (default: 0 meters). -->
+        <param name="initial_pos_x" value="$(arg initial_pose_x)" />
+        <!-- Initial y position (default: 0 meters). -->
+        <param name="initial_pos_y" value="$(arg initial_pose_y)" />
+        <!-- Initial rotation (or angle) (default: 0 rad). -->
+        <param name="initial_pos_a" value="$(arg initial_yaw)"/>
+
+        <!-- Traveled distance to accumulate before updating (default: 0.1 meters). -->
+        <param name="d_thresh" value="0.1"/>
+        <!-- Angular motion to accumulate before updating (default: 0.2 rads). -->
+        <param name="a_thresh" value="0.2"/>
+        <!-- Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters). -->
+        <param name="l2_max" value="0.5"/>
+        <!-- Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn"). -->
+        <param name="strategy" value="gn"/>
+
+        <!-- Number of particles used to find the best global localization (default: 3000) -->
+        <param name="gloc_particles" value="3000"/>
+        <!-- Maximum number of iterations executed by the global localization procedure (default: 20) -->
+        <param name="gloc_iters" value="20"/>
+        <!-- Value at which a global localization particle is considered viable. (default: 0.15 RMSE) -->
+        <param name="gloc_thresh" value="0.15"/>
+        <!-- Length of a patch (default: 32 cells). -->
+        <param name="patch_size" value="32"/>
+
+        <!--  -->
+        <param name="do_global_loc" value="false"/>
+
+        <!--remap from="pose" to="amcl_pose"/-->
+
+    </node>
+</launch>
