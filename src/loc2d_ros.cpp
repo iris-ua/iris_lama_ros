@@ -46,7 +46,7 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("odom_frame_id",   odom_frame_id_,   std::string("odom"));
     pnh_.param("base_frame_id",   base_frame_id_,   std::string("base_link"));
 
-    pnh_.param("scan_topic", scan_topic_, std::string("/scan"));
+    pnh_.param("scan_topic", scan_topic_, std::string("scan"));
 
     pnh_.param("transform_tolerance", tmp, 0.1); transform_tolerance_.fromSec(tmp);
 
@@ -67,13 +67,13 @@ lama::Loc2DROS::Loc2DROS()
     laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, *tf_, odom_frame_id_, 100);
     laser_scan_filter_->registerCallback(boost::bind(&Loc2DROS::onLaserScan, this, _1));
 
-    pose_sub_ = nh_.subscribe("/initialpose", 1, &Loc2DROS::onInitialPose, this);
+    pose_sub_ = nh_.subscribe("initialpose", 1, &Loc2DROS::onInitialPose, this);
 
     // Set publishers
-    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pose", 10);
+    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 2, true);
 
     // Services
-    srv_update_ = nh_.advertiseService("/request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
+    srv_update_ = nh_.advertiseService("request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
     srv_global_loc_ = nh_.advertiseService("global_localization", &Loc2DROS::globalLocalizationCallback, this);
 
     // Fetch algorithm options
@@ -82,6 +82,12 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("initial_pos_y", pos[1], 0.0);
     pnh_.param("initial_pos_a", init_a, 0.0);
     initial_prior_ = lama::Pose2D(pos, init_a);
+
+    cur_pose_msg_.pose.pose.position.x = pos[0];
+    cur_pose_msg_.pose.pose.position.y = pos[1];
+    cur_pose_msg_.pose.pose.orientation.z = tf::createQuaternionFromYaw(init_a).getZ();
+    cur_pose_msg_.pose.pose.orientation.w = tf::createQuaternionFromYaw(init_a).getW();
+    pose_pub_.publish(cur_pose_msg_);
 
     pnh_.param("d_thresh", options_.trans_thresh, 0.1);
     pnh_.param("a_thresh", options_.rot_thresh, 0.2);
@@ -140,6 +146,20 @@ lama::Loc2DROS::~Loc2DROS()
     delete tfb_;
 }
 
+void lama::Loc2DROS::publishCurrentPose(bool init)
+{
+    if (init)
+    {
+        current_pose_ = loc2d_.getPose();
+        current_orientation_ = tf::createQuaternionFromYaw(current_pose_.rotation());
+    }
+    cur_pose_msg_.pose.pose.position.x = current_pose_.x();
+    cur_pose_msg_.pose.pose.position.y = current_pose_.y();
+    cur_pose_msg_.pose.pose.orientation.z = current_orientation_.getZ();
+    cur_pose_msg_.pose.pose.orientation.w = current_orientation_.getW();
+    pose_pub_.publish(cur_pose_msg_);
+}
+
 void lama::Loc2DROS::onInitialPose(const geometry_msgs::PoseWithCovarianceStampedConstPtr& initial_pose)
 {
     float x = initial_pose->pose.pose.position.x;
@@ -154,6 +174,7 @@ void lama::Loc2DROS::onInitialPose(const Pose2D& prior)
     ROS_INFO("Setting pose to (%f, %f, %f)", prior.x(), prior.y() ,prior.rotation());
     loc2d_.setPose(prior);
     force_update_ = force_update_on_initial_pose_;
+    publishCurrentPose(true);
 }
 
 void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -229,11 +250,12 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
             ROS_INFO("Global Localization RMSE: %f", loc2d_.getRMSE());
         }
 
-        Pose2D pose = loc2d_.getPose();
+        current_pose_ = loc2d_.getPose();
+        current_orientation_ = tf::createQuaternionFromYaw(current_pose_.rotation());
         // subtracting base to odom from map to base and send map to odom instead
         tf::Stamped<tf::Pose> odom_to_map;
         try{
-            tf::Transform tmp_tf(tf::createQuaternionFromYaw(pose.rotation()), tf::Vector3(pose.x(), pose.y(), 0));
+            tf::Transform tmp_tf(current_orientation_, tf::Vector3(current_pose_.x(), current_pose_.y(), 0));
             tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
             tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
 
@@ -259,6 +281,7 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
+    publishCurrentPose();
 }
 
 void lama::Loc2DROS::onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
