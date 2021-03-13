@@ -83,14 +83,6 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("initial_pos_a", init_a, 0.0);
     initial_prior_ = lama::Pose2D(pos, init_a);
 
-    cur_pose_msg_.header.frame_id = global_frame_id_;
-    cur_pose_msg_.pose.pose.position.x = pos[0];
-    cur_pose_msg_.pose.pose.position.y = pos[1];
-    cur_pose_msg_.pose.pose.orientation.z = tf::createQuaternionFromYaw(init_a).getZ();
-    cur_pose_msg_.pose.pose.orientation.w = tf::createQuaternionFromYaw(init_a).getW();
-    cur_pose_msg_.header.stamp = ros::Time::now();
-    pose_pub_.publish(cur_pose_msg_);
-
     pnh_.param("d_thresh", options_.trans_thresh, 0.1);
     pnh_.param("a_thresh", options_.rot_thresh, 0.2);
     pnh_.param("l2_max",   options_.l2_max, 0.5);
@@ -148,15 +140,10 @@ lama::Loc2DROS::~Loc2DROS()
     delete tfb_;
 }
 
-void lama::Loc2DROS::publishCurrentPose(bool init)
+void lama::Loc2DROS::publishCurrentPose()
 {
-    if (init)
-    {
-        current_pose_ = loc2d_.getPose();
-        current_orientation_ = tf::createQuaternionFromYaw(current_pose_.rotation());
-    }
-    cur_pose_msg_.pose.pose.position.x = current_pose_.x();
-    cur_pose_msg_.pose.pose.position.y = current_pose_.y();
+    cur_pose_msg_.pose.pose.position.x = loc2d_.getPose().x();
+    cur_pose_msg_.pose.pose.position.y = loc2d_.getPose().y();
     cur_pose_msg_.pose.pose.orientation.z = current_orientation_.getZ();
     cur_pose_msg_.pose.pose.orientation.w = current_orientation_.getW();
     cur_pose_msg_.header.stamp = ros::Time::now();
@@ -177,7 +164,8 @@ void lama::Loc2DROS::onInitialPose(const Pose2D& prior)
     ROS_INFO("Setting pose to (%f, %f, %f)", prior.x(), prior.y() ,prior.rotation());
     loc2d_.setPose(prior);
     force_update_ = force_update_on_initial_pose_;
-    publishCurrentPose(true);
+    current_orientation_ = tf::createQuaternionFromYaw(prior.rotation());
+    publishCurrentPose();
 }
 
 void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -253,12 +241,11 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
             ROS_INFO("Global Localization RMSE: %f", loc2d_.getRMSE());
         }
 
-        current_pose_ = loc2d_.getPose();
-        current_orientation_ = tf::createQuaternionFromYaw(current_pose_.rotation());
+        current_orientation_ = tf::createQuaternionFromYaw(loc2d_.getPose().rotation());
         // subtracting base to odom from map to base and send map to odom instead
         tf::Stamped<tf::Pose> odom_to_map;
         try{
-            tf::Transform tmp_tf(current_orientation_, tf::Vector3(current_pose_.x(), current_pose_.y(), 0));
+            tf::Transform tmp_tf(current_orientation_, tf::Vector3(loc2d_.getPose().x(), loc2d_.getPose().y(), 0));
             tf::Stamped<tf::Pose> tmp_tf_stamped (tmp_tf.inverse(), laser_scan->header.stamp, base_frame_id_);
             tf_->transformPose(odom_frame_id_, tmp_tf_stamped, odom_to_map);
 
