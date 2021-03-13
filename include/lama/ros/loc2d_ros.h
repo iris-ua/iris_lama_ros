@@ -91,6 +91,8 @@ private:
     // Trigger a global localization procedure.
     bool globalLocalizationCallback(std_srvs::Empty::Request& req, std_srvs::Empty::Response& resp);
 
+    void publishCurrentPose();
+
 private:
 
     // == ROS stuff ==
@@ -141,6 +143,8 @@ private:
     Pose2D odom_;
     Loc2D::Options options_;
     Pose2D initial_prior_;
+    tf::Quaternion current_orientation_;
+    geometry_msgs::PoseWithCovarianceStamped cur_pose_msg_;
 };
 
 } /* lama */
