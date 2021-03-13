@@ -83,10 +83,12 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("initial_pos_a", init_a, 0.0);
     initial_prior_ = lama::Pose2D(pos, init_a);
 
+    cur_pose_msg_.header.frame_id = global_frame_id_;
     cur_pose_msg_.pose.pose.position.x = pos[0];
     cur_pose_msg_.pose.pose.position.y = pos[1];
     cur_pose_msg_.pose.pose.orientation.z = tf::createQuaternionFromYaw(init_a).getZ();
     cur_pose_msg_.pose.pose.orientation.w = tf::createQuaternionFromYaw(init_a).getW();
+    cur_pose_msg_.header.stamp = ros::Time::now();
     pose_pub_.publish(cur_pose_msg_);
 
     pnh_.param("d_thresh", options_.trans_thresh, 0.1);
@@ -157,6 +159,7 @@ void lama::Loc2DROS::publishCurrentPose(bool init)
     cur_pose_msg_.pose.pose.position.y = current_pose_.y();
     cur_pose_msg_.pose.pose.orientation.z = current_orientation_.getZ();
     cur_pose_msg_.pose.pose.orientation.w = current_orientation_.getW();
+    cur_pose_msg_.header.stamp = ros::Time::now();
     pose_pub_.publish(cur_pose_msg_);
 }
 
@@ -274,6 +277,7 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
                                             transform_expiration,
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
+        publishCurrentPose();
     } else {
         // Nothing has change, therefore, republish the last transform.
         ros::Time transform_expiration = (laser_scan->header.stamp + transform_tolerance_);
@@ -281,7 +285,6 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
                                             global_frame_id_, odom_frame_id_);
         tfb_->sendTransform(tmp_tf_stamped);
     } // end if (update)
-    publishCurrentPose();
 }
 
 void lama::Loc2DROS::onMapReceived(const nav_msgs::OccupancyGridConstPtr& msg)
