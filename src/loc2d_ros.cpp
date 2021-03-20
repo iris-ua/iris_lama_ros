@@ -46,7 +46,7 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("odom_frame_id",   odom_frame_id_,   std::string("odom"));
     pnh_.param("base_frame_id",   base_frame_id_,   std::string("base_link"));
 
-    pnh_.param("scan_topic", scan_topic_, std::string("/scan"));
+    pnh_.param("scan_topic", scan_topic_, std::string("scan"));
 
     pnh_.param("transform_tolerance", tmp, 0.1); transform_tolerance_.fromSec(tmp);
 
@@ -67,13 +67,13 @@ lama::Loc2DROS::Loc2DROS()
     laser_scan_filter_ = new tf::MessageFilter<sensor_msgs::LaserScan>(*laser_scan_sub_, *tf_, odom_frame_id_, 100);
     laser_scan_filter_->registerCallback(boost::bind(&Loc2DROS::onLaserScan, this, _1));
 
-    pose_sub_ = nh_.subscribe("/initialpose", 1, &Loc2DROS::onInitialPose, this);
+    pose_sub_ = nh_.subscribe("initialpose", 1, &Loc2DROS::onInitialPose, this);
 
     // Set publishers
-    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("/pose", 2, true);
+    pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 2, true);
 
     // Services
-    srv_update_ = nh_.advertiseService("/request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
+    srv_update_ = nh_.advertiseService("request_nomotion_update", &Loc2DROS::onTriggerUpdate, this);
     srv_global_loc_ = nh_.advertiseService("global_localization", &Loc2DROS::globalLocalizationCallback, this);
 
     // Fetch algorithm options
@@ -117,7 +117,7 @@ lama::Loc2DROS::Loc2DROS()
     }
     else
     {
-        map_sub_ = nh_.subscribe("/map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
+        map_sub_ = nh_.subscribe("map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
     }
 
     // Should trigger an initial global localization?
