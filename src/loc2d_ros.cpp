@@ -147,6 +147,13 @@ void lama::Loc2DROS::publishCurrentPose()
     cur_pose_msg_.pose.pose.orientation.z = current_orientation_.getZ();
     cur_pose_msg_.pose.pose.orientation.w = current_orientation_.getW();
     cur_pose_msg_.header.stamp = ros::Time::now();
+
+    auto& covar = loc2d_.getCovar();
+    for (int i = 0; i < 2; ++i)
+        for (int j = 0; j < 2; ++j)
+            cur_pose_msg_.pose.covariance[6*i+j] = covar(i,j);
+    cur_pose_msg_.pose.covariance[6*5+5] = covar(2,2);
+
     pose_pub_.publish(cur_pose_msg_);
 }
 
