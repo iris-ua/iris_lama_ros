@@ -128,6 +128,9 @@ lama::Loc2DROS::Loc2DROS()
         loc2d_.triggerGlobalLocalization();
     }
 
+    // The pose is published in the global frame.
+    cur_pose_msg_.header.frame_id = global_frame_id_;
+
     ROS_INFO("2D Localization node up and running");
 }
 
