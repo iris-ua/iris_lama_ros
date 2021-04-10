@@ -2,6 +2,14 @@
 Changelog for package iris_lama_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.2.0 (2021-04-10)
+------------------
+* Remove backlash from frame ids
+* Fix laser orientation checks in the localization node
+* Add launch file for localization node
+* Remove backlash from global namespace topics
+* Publish localization covariance
+
 1.1.0 (2020-12-05)
 ------------------
 * Add "truncate" parameters
