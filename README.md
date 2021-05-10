@@ -71,6 +71,7 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~compression_algorithm`: Compression algorithm to use, lz4 or zstd (default: "lz4").
 * `~cache_size`: Size of the LRU used during online data compression (default: 100).
 * `~mrange`: Maximum laser scan range (default: 16 meters).
+* `~beam_step`: Number of beams to step (or skip) in each scan (default: 1).
 * `~truncate`: Truncate the laser scan range from start to "middle" (default: 0.0 meters, 0.0 means no truncation).
 * `~truncate_ray`: Truncate the laser scan range (or ray) from "middle" to end (default: 0.0 meters, 0.0 means no truncation).
 * `~map_publish_period`: How long between updates to the map (default: 5 seconds).

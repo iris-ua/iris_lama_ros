@@ -67,6 +67,9 @@ lama::Slam2DROS::Slam2DROS()
     pnh_.param("use_compression",       options.use_compression, false);
     pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4"));
     pnh_.param("mrange",   max_range_, 16.0);
+    pnh_.param("beam_step", beam_step_, 1);
+
+    beam_step_ = std::max(1, beam_step_);
 
     int itmp;
     pnh_.param("max_iterations", itmp, 100); options.max_iter   = itmp;
@@ -143,7 +146,6 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
     if (update){
 
         size_t size = laser_scan->ranges.size();
-        size_t beam_step = 1;
 
         float max_range;
         if (max_range_ == 0.0 || max_range_ > laser_scan->range_max)
@@ -161,7 +163,7 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
         cloud->sensor_orientation_ = Quaterniond(lasers_origin_[laser_index].state.so3().matrix());
 
         cloud->points.reserve(laser_scan->ranges.size());
-        for(size_t i = 0; i < size; i += beam_step ){
+        for(size_t i = 0; i < size; i += beam_step_){
             const double range = laser_scan->ranges[i];
 
             if (not std::isfinite(range))

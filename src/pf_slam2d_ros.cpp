@@ -79,7 +79,10 @@ lama::PFSlam2DROS::PFSlam2DROS()
     pnh_.param("use_compression",       options.use_compression, false);
     pnh_.param("compression_algorithm", options.calgorithm, std::string("zstd"));
     pnh_.param("mrange",   max_range_, 16.0);
+    pnh_.param("beam_step", beam_step_, 1);
     pnh_.param("threads", options.threads, -1);
+
+    beam_step_ = std::max(1, beam_step_);
 
     int itmp;
     pnh_.param("patch_size", itmp, 32); options.patch_size = itmp;
@@ -179,7 +182,6 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
     bool update;
 
     size_t size = laser_scan->ranges.size();
-    size_t beam_step = 1;
 
     float max_range;
     if (max_range_ == 0.0 || max_range_ > laser_scan->range_max)
@@ -197,7 +199,7 @@ void lama::PFSlam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_
     cloud->sensor_orientation_ = Quaterniond(lasers_origin_[laser_index].state.so3().matrix());
 
     cloud->points.reserve(laser_scan->ranges.size());
-    for(size_t i = 0; i < size; i += beam_step ){
+    for(size_t i = 0; i < size; i += beam_step_ ){
 
         if (std::isnan(laser_scan->ranges[i]) || std::isinf(laser_scan->ranges[i]))
             continue;

@@ -112,6 +112,7 @@ private:
     std::vector<bool>          lasers_update_;  ///< Vector that signals which laser to update.
     std::vector<Pose3D, Eigen::aligned_allocator<Pose3D>>        lasers_origin_;  ///< Laser origin transformation
     double max_range_;
+    int beam_step_;
 
     // maps
     nav_msgs::OccupancyGrid ros_occ_;

@@ -107,6 +107,7 @@ private:
     std::map<std::string, int> frame_to_laser_; ///< Map with the known lasers.
     std::vector<Pose3D, Eigen::aligned_allocator<Pose3D>>        lasers_origin_;  ///< Laser origin transformation
     double max_range_;
+    int beam_step_;
 
     // maps
     nav_msgs::OccupancyGrid ros_occ_;
