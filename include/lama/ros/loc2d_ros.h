@@ -145,6 +145,9 @@ private:
     Pose2D initial_prior_;
     tf::Quaternion current_orientation_;
     geometry_msgs::PoseWithCovarianceStamped cur_pose_msg_;
+
+    double max_range_ = 20;     ///< Maximum laser scan range
+    int beam_step_ = 1;         ///< Number of beams to step (or skip) in each scan.
 };
 
 } /* lama */

@@ -97,6 +97,11 @@ lama::Loc2DROS::Loc2DROS()
 
     pnh_.param("gloc_thresh", options_.gloc_thresh, 0.15);
 
+    pnh_.param("mrange", max_range_, 0.0);
+    pnh_.param("beam_step", beam_step_, 1);
+    // make sure the beam step is positive
+    beam_step_ = std::max(1, beam_step_);
+
     // Request the map if not using the map topic
     if (not use_map_topic_)
     {
@@ -209,10 +214,15 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
     bool update = force_update_ or loc2d_.enoughMotion(odom);
 
     if (update){
-        size_t size = laser_scan->ranges.size();
-        size_t beam_step = 1;
 
-        float max_range = laser_scan->range_max;
+        const size_t size = laser_scan->ranges.size();
+
+        float max_range;
+        if (max_range_ == 0.0 || max_range_ > laser_scan->range_max)
+            max_range = laser_scan->range_max;
+        else
+            max_range = max_range_;
+
         float min_range = laser_scan->range_min;
         float angle_min = laser_scan->angle_min;
         float angle_inc = laser_scan->angle_increment;
@@ -222,8 +232,8 @@ void lama::Loc2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sca
         cloud->sensor_origin_ = lasers_origin_[laser_index].xyz();
         cloud->sensor_orientation_ = Quaterniond(lasers_origin_[laser_index].state.so3().matrix());
 
-        cloud->points.reserve(laser_scan->ranges.size());
-        for(size_t i = 0; i < size; i += beam_step ){
+        cloud->points.reserve(size);
+        for(size_t i = 0; i < size; i += beam_step_ ){
             double range;
 
             range = laser_scan->ranges[i];

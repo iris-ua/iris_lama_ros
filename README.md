@@ -107,6 +107,8 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~odom_frame_id`: The frame attached to the odometry system (default: "odometry").
 * `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
 * `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
+* `~mrange`: Maximum laser scan range. When 0, maximum range defaults to the sensor maximum range. (default: 0 meters).
+* `~beam_step`: Number of beams to step (or skip) in each scan (default: 1).
 * `~initial_pos_x`: Initial x position (default: 0 meters).
 * `~initial_pos_y`: Initial y position (default: 0 meters).
 * `~initial_pos_a`: Initial rotation (or angle) (default: 0 rad).
