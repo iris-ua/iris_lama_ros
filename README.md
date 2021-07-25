@@ -76,8 +76,8 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~truncate`: Truncate the laser scan range from start to "middle" (default: 0.0 meters, 0.0 means no truncation).
 * `~truncate_ray`: Truncate the laser scan range (or ray) from "middle" to end (default: 0.0 meters, 0.0 means no truncation).
 * `~map_publish_period`: How long between updates to the map (default: 5 seconds).
-* `~transient_map`: If true we only keep the most recent portion of the map "sensed" by the latest surface.
-* `~create_summary`: 
+* `~transient_map`: True to only keep the most recent portion of the map "sensed" by the latest surface (default": `false`)
+* `~create_summary`: (default: `false`)
 
 Particle Filter SLAM only:
 * `~d_thresh`: Traveled distance to accumulate before updating (default: 0.5 meters).
@@ -133,6 +133,6 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~gloc_particles`: Number of particles used to find the best global localization (default: 3000)
 * `~gloc_thresh`: Value at which a global localization particle is considered viable. (default: 0.15 RMSE)
 * `~gloc_iters`: Maximum number of iterations executed by the global localization procedure (default: 20)
-* `~do_global_loc`: If true triggers an initial global localization (default: false)
+* `~do_global_loc`: True to trigger an initial global localization (default: `false`)
 
 
