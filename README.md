@@ -57,6 +57,7 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~odom_frame_id`: The frame attached to the odometry system (default: "odom").
 * `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
 * `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
+* `~transform_tolerance`: Defines how long map->odom transform is good for by [future dating tf](https://answers.ros.org/question/218864/why-does-amcl-post-date-tf-transform_tolerance/) (default: 0.1)
 * `~initial_pos_x`: Initial x position (default: 0 meters).
 * `~initial_pos_y`: Initial y position (default: 0 meters).
 * `~initial_pos_a`: Initial rotation (or angle) (default: 0 rad).
@@ -75,6 +76,8 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~truncate`: Truncate the laser scan range from start to "middle" (default: 0.0 meters, 0.0 means no truncation).
 * `~truncate_ray`: Truncate the laser scan range (or ray) from "middle" to end (default: 0.0 meters, 0.0 means no truncation).
 * `~map_publish_period`: How long between updates to the map (default: 5 seconds).
+* `~transient_map`: If true we only keep the most recent portion of the map "sensed" by the latest surface.
+* `~create_summary`: 
 
 Particle Filter SLAM only:
 * `~d_thresh`: Traveled distance to accumulate before updating (default: 0.5 meters).
@@ -87,6 +90,10 @@ Particle Filter SLAM only:
 * `~str`: Odometry error in rotation as a function of translation (default: 0.2).
 * `~stt`: Odometry error in traslation as a function of translation (default: 0.1).
 * `~srt`: Odometry error in translation as a funciton of rotation (default: 0.1).
+
+### Services
+
+* `/dynamic_map`: 
 
 ## Localization node
 
@@ -109,6 +116,7 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~base_frame_id`: The frame attached to the mobile base (default: "base_link").
 * `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
 * `~mrange`: Maximum laser scan range. When 0, maximum range defaults to the sensor maximum range. (default: 0 meters).
+* `~transform_tolerance`: Defines how long map->odom transform is good for by [future dating tf](https://answers.ros.org/question/218864/why-does-amcl-post-date-tf-transform_tolerance/) (default: 0.1)
 * `~beam_step`: Number of beams to step (or skip) in each scan (default: 1).
 * `~initial_pos_x`: Initial x position (default: 0 meters).
 * `~initial_pos_y`: Initial y position (default: 0 meters).
@@ -125,3 +133,6 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~gloc_particles`: Number of particles used to find the best global localization (default: 3000)
 * `~gloc_thresh`: Value at which a global localization particle is considered viable. (default: 0.15 RMSE)
 * `~gloc_iters`: Maximum number of iterations executed by the global localization procedure (default: 20)
+* `~do_global_loc`: If true triggers an initial global localization (default: false)
+
+
