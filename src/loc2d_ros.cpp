@@ -31,6 +31,8 @@
  *
  */
 
+#include <cstdlib>
+
 #include <nav_msgs/GetMap.h>
 
 #include "lama/ros/loc2d_ros.h"
@@ -53,6 +55,11 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("use_map_topic", use_map_topic_, false);
     pnh_.param("first_map_only", first_map_only_, false);
     pnh_.param("use_pose_on_new_map", use_pose_on_new_map_, false);
+
+    bool use_map_sideloading;
+    std::string map_sideloading_dir;
+    pnh_.param("use_map_sideloading", use_map_sideloading, false);
+    pnh_.param("map_sideloading_dir", map_sideloading_dir, std::string(""));
 
     pnh_.param("force_update_on_initial_pose", force_update_on_initial_pose_, false);
 
@@ -88,7 +95,12 @@ lama::Loc2DROS::Loc2DROS()
     pnh_.param("l2_max",   options_.l2_max, 0.5);
     pnh_.param("strategy", options_.strategy, std::string("gn"));
 
+    pnh_.param("covariance_blend", options_.cov_blend, 0.0);
+
     int dummy;
+    pnh_.param("patch_size", dummy, 32);
+    options_.patch_size = dummy;
+
     pnh_.param("gloc_particles", dummy, 3000);
     options_.gloc_particles = dummy;
 
@@ -102,28 +114,72 @@ lama::Loc2DROS::Loc2DROS()
     // make sure the beam step is positive
     beam_step_ = std::max(1, beam_step_);
 
-    // Request the map if not using the map topic
-    if (not use_map_topic_)
-    {
-        ROS_INFO("Requesting the map...");
-        nav_msgs::GetMap::Request  req;
-        nav_msgs::GetMap::Response resp;
-        while(ros::ok() and not ros::service::call("static_map", req, resp)){
-            ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
-            ros::Duration d(0.5);
-            d.sleep();
-        }// end while
+    // The pose is published in the global frame.
+    cur_pose_msg_.header.frame_id = global_frame_id_;
+    // No map ultil now...
+    first_map_received_ = false;
 
-        int itmp;
-        pnh_.param("patch_size", itmp, 32);
-        options_.patch_size = itmp;
+    if (use_map_sideloading){
 
-        InitLoc2DFromOccupancyGridMsg(initial_prior_, resp.map);
-    }
-    else
-    {
-        map_sub_ = nh_.subscribe("map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
-    }
+        ROS_INFO("Sideloading maps...");
+        ros::WallTime start = ros::WallTime::now();
+
+        char c_abs_path[PATH_MAX+1];
+        char* ptr = realpath(map_sideloading_dir.c_str(), c_abs_path);
+
+        if (ptr == nullptr){
+            if (map_sideloading_dir != "")
+                ROS_WARN("Failed to resolve sideloading directory. Reverting to current directory.");
+            ptr = getcwd(c_abs_path, sizeof(c_abs_path));
+        }
+
+        loc2d_.Init(options_);
+
+        std::string abs_path(c_abs_path);
+        // If the first map fails to load, the second one is skipped
+        bool ok = loc2d_.occupancy_map->read(abs_path + "/occ.sdm") &&
+                  loc2d_.distance_map->read(abs_path + "/dm.sdm");
+
+        if (ok){
+            auto loadtime = (ros::WallTime::now() - start).toSec();
+            ROS_INFO("Maps loaded in %f seconds", loadtime);
+
+            onInitialPose(initial_prior_);
+            first_map_received_ = true;
+        } else {
+            ROS_ERROR("Failed to sideloading the maps. Check your 'occ.sdm' and 'dm.sdm' files.");
+        }
+    }// end if (use_map_sideloading)
+
+    if (not first_map_received_){
+        // If sideloading is requested and it fails, it will still load a map...
+        if (use_map_sideloading)
+            ROS_WARN("Loading map from map_server.");
+
+        if (not use_map_topic_) {
+            // Request the map if not using the map topic
+            ROS_INFO("Requesting the map...");
+            nav_msgs::GetMap::Request  req;
+            nav_msgs::GetMap::Response resp;
+            while(ros::ok() and not ros::service::call("static_map", req, resp)){
+                ROS_WARN_THROTTLE(1, "Request for map failed; trying again ...");
+                ros::Duration d(0.5);
+                d.sleep();
+            }// end while
+
+            InitLoc2DFromOccupancyGridMsg(initial_prior_, resp.map);
+        } else {
+            ROS_INFO("Waiting for a map message...");
+            auto msg = ros::topic::waitForMessage<nav_msgs::OccupancyGrid>("map", nh_);
+            onMapReceived(msg);
+
+            if (not first_map_only_){
+                // setup the subscriber for future changes..
+                map_sub_ = nh_.subscribe("map", 10, &Loc2DROS::onMapReceived, this, ros::TransportHints().tcpNoDelay());
+            }
+        }
+
+    }// end if (not first_map_received_)
 
     // Should trigger an initial global localization?
     bool do_global_loc;
@@ -132,9 +188,6 @@ lama::Loc2DROS::Loc2DROS()
         ROS_INFO("Trigger Global Localization");
         loc2d_.triggerGlobalLocalization();
     }
-
-    // The pose is published in the global frame.
-    cur_pose_msg_.header.frame_id = global_frame_id_;
 
     ROS_INFO("2D Localization node up and running");
 }

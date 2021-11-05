@@ -12,6 +12,8 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+find_package(yaml-cpp REQUIRED)
+
 find_package(catkin REQUIRED COMPONENTS
     tf
     roscpp
@@ -34,7 +36,7 @@ catkin_package()
 ###########
 
 ## Specify additional locations of header files
-include_directories(include ${catkin_INCLUDE_DIRS})
+include_directories(include ${catkin_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
 add_subdirectory(src)
 
 #############

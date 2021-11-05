@@ -67,7 +67,7 @@ roslaunch iris_lama_ros pf_slam2d_offine.launch scan_topic:=base_scan rosbag:=/p
 * `~resolution`: Resolution of the grid maps (default: 0.05 meters).
 * `~patch_size`: Length of a patch (default: 32 cells).
 * `~strategy`: Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn").
-* `~max_iterations`: Maximum number of interations performed by the optimizer (default: 100)
+* `~max_iterations`: Maximum number of iterations performed by the optimizer (default: 100)
 * `~use_compression`: Should the maps be compressed (default: false).
 * `~compression_algorithm`: Compression algorithm to use, lz4 or zstd (default: "lz4").
 * `~cache_size`: Size of the LRU used during online data compression (default: 100).
@@ -88,8 +88,8 @@ Particle Filter SLAM only:
 * `~lgain`: Gain value for smoothing the particles likelihood (default: 3.0).
 * `~srr`: Odometry error in rotation as a function of rotation (default: 0.1).
 * `~str`: Odometry error in rotation as a function of translation (default: 0.2).
-* `~stt`: Odometry error in traslation as a function of translation (default: 0.1).
-* `~srt`: Odometry error in translation as a funciton of rotation (default: 0.1).
+* `~stt`: Odometry error in translation as a function of translation (default: 0.1).
+* `~srt`: Odometry error in translation as a function of rotation (default: 0.1).
 
 ### Services
 
@@ -126,6 +126,7 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~l2_max`: Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters).
 * `~strategy`: Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn").
 * `~patch_size`: Length of a patch (default: 32 cells).
+* `~covariance_blend`: Blending factor ([0,1]) between optimization covariance and sampling covariance (default: 0.0).
 * `~use_map_topic`: True to subscribe to the `/map` topic instead of requesting the map through the "`static_map`" service (default: `false`).
 * `~first_map_only`: True to use only the first map ever received (default: `false`).
 * `~use_pose_on_new_map`: True to use the current algorithm pose when the map changes (default: `false`).
