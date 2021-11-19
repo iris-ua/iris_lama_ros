@@ -129,7 +129,9 @@ private:
     std::string odom_frame_id_;         ///< Odometry frame id.
     std::string base_frame_id_;         ///< Robot base frame.
 
-    std::string scan_topic_;   ///< LaserScan message topic.
+    std::string scan_topic_;            ///< LaserScan message topic.
+
+    double temporal_update_;            ///< Force an update when the last processed scan is older than this.
 
     bool publish_tf_;                   ///< True to publish the transformations.
     bool use_map_topic_;                ///< True to subscribe to the map topic instead of requesting the map through the "static_map" service
