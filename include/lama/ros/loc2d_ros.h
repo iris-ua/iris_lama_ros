@@ -131,11 +131,12 @@ private:
 
     std::string scan_topic_;   ///< LaserScan message topic.
 
-    bool use_map_topic_; ///< True to subscribe to the map topic instead of requesting the map through the "static_map" service
-    bool first_map_only_; ///< True to use only the first map ever received
-    bool first_map_received_; ///< True if the first map has already been received
-    bool use_pose_on_new_map_; ///< True to use the current algorithm pose when the map changes
-    bool force_update_; ///< True to force an update when a new laser scan is received
+    bool publish_tf_;                   ///< True to publish the transformations.
+    bool use_map_topic_;                ///< True to subscribe to the map topic instead of requesting the map through the "static_map" service
+    bool first_map_only_;               ///< True to use only the first map ever received
+    bool first_map_received_;           ///< True if the first map has already been received
+    bool use_pose_on_new_map_;          ///< True to use the current algorithm pose when the map changes
+    bool force_update_;                 ///< True to force an update when a new laser scan is received
     bool force_update_on_initial_pose_; ///< True to trigger a forced updated when an initial pose is received
 
     // == Inner state ==

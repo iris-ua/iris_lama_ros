@@ -117,6 +117,7 @@ Please use `rviz` to set the initial pose. Global localization is not yet implem
 * `~scan_topic`: Laser scan topic to subscribe (default: "/scan").
 * `~mrange`: Maximum laser scan range. When 0, maximum range defaults to the sensor maximum range. (default: 0 meters).
 * `~transform_tolerance`: Defines how long map->odom transform is good for by [future dating tf](https://answers.ros.org/question/218864/why-does-amcl-post-date-tf-transform_tolerance/) (default: 0.1)
+* `~publish_tf`: Publish TF correction from `global_frame_id` to `odom_frame_id` (default: true).
 * `~beam_step`: Number of beams to step (or skip) in each scan (default: 1).
 * `~initial_pos_x`: Initial x position (default: 0 meters).
 * `~initial_pos_y`: Initial y position (default: 0 meters).
