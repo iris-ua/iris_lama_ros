@@ -183,6 +183,19 @@ void lama::Slam2DROS::onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_sc
         slam2d_->update(cloud, odom, laser_scan->header.stamp.toSec());
 
         Pose2D pose = slam2d_->getPose();
+        // publish the pose
+        geometry_msgs::PoseWithCovarianceStamped msg;
+        msg.header.frame_id = global_frame_id_;
+        msg.header.stamp = laser_scan->header.stamp;
+        msg.pose.pose.position.x = pose.x();
+        msg.pose.pose.position.y = pose.y();
+        msg.pose.pose.position.z = 0.0;
+
+        msg.pose.pose.orientation = tf::createQuaternionMsgFromYaw(pose.rotation());
+
+        // TODO: Pose covariance.
+        pose_pub_.publish(msg);
+
         // subtracting base to odom from map to base and send map to odom instead
         tf::Stamped<tf::Pose> odom_to_map;
         try{
