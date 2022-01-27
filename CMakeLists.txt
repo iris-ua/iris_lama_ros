@@ -12,6 +12,8 @@ find_package(Eigen3 REQUIRED NO_MODULE)
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+add_compile_options(-msse4.1 -DEIGEN_NO_DEBUG)
+
 find_package(yaml-cpp REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS

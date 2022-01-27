@@ -8,6 +8,9 @@ target_link_libraries(slam2d_ros ${catkin_LIBRARIES})
 add_executable(pf_slam2d_ros pf_slam2d_ros.cpp offline_replay.cpp)
 target_link_libraries(pf_slam2d_ros ${catkin_LIBRARIES})
 
+add_executable(graph_slam2d_ros graph_slam2d_ros.cpp)
+target_link_libraries(graph_slam2d_ros ${catkin_LIBRARIES})
+
 add_executable(ros2sdm ros2sdm.cpp)
 target_link_libraries(ros2sdm ${catkin_LIBRARIES} ${YAML_CPP_LIBRARIES})
 
