@@ -41,7 +41,7 @@
         <param name="a_thresh" value="0.2"/>
         <!-- Maximum distance to use in the dynamic Euclidean distance map (default: 0.5 meters). -->
         <param name="l2_max" value="0.5"/>
-        <!-- Scan matching optimization strategy, GaussNewton ("gm") or Levenberg Marquard ("lm") (default: "gn"). -->
+        <!-- Scan matching optimization strategy, GaussNewton ("gn") or Levenberg Marquard ("lm") (default: "gn"). -->
         <param name="strategy" value="gn"/>
 
         <!-- Number of particles used to find the best global localization (default: 3000) -->
