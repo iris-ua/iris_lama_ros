@@ -6,15 +6,11 @@ if (NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE Release)
 endif()
 
-find_package(Eigen3 REQUIRED NO_MODULE)
-# find_package(iris_lama REQUIRED)
+find_package(iris_lama REQUIRED)
+find_package(yaml-cpp REQUIRED)
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
-add_compile_options(-msse4.1 -DEIGEN_NO_DEBUG)
-
-find_package(yaml-cpp REQUIRED)
 
 find_package(catkin REQUIRED COMPONENTS
     tf
@@ -27,24 +23,17 @@ find_package(catkin REQUIRED COMPONENTS
     message_filters
     visualization_msgs
     rosbag_storage
-    iris_lama
     std_srvs
 )
 
 catkin_package()
 
-###########
-## Build ##
-###########
-
 ## Specify additional locations of header files
 include_directories(include ${catkin_INCLUDE_DIRS} ${YAML_CPP_INCLUDE_DIR})
 add_subdirectory(src)
 
-#############
-## Install ##
-#############
 
+# Install our lannch files
 install(DIRECTORY launch/
     DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION}/launch
     PATTERN ".svn" EXCLUDE
