@@ -77,21 +77,13 @@ public:
 
     virtual void onData(const sensor_msgs::LaserScan::ConstPtr& laser_scan) final;
 
-    virtual void saveLog() override;
-
-    /* void onLaserScan(const sensor_msgs::LaserScanConstPtr& laser_scan); */
-
     bool onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res);
     void publishMaps();
-
-    void printSummary();
 
     inline void optimizePoseGraph()
     { slam2d_->optimizePoseGraph(); }
 
 private:
-
-    /* bool initLaser(const sensor_msgs::LaserScanConstPtr& laser_scan); */
 
     bool OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg, const lama::OccupancyMap* occ);
 
@@ -109,12 +101,13 @@ private:
     ros::Publisher map_pub_;
     ros::Publisher transient_map_pub_;
     ros::Publisher dist_pub_;
-    ros::Publisher kp_pub_;
+    ros::Publisher graph_pub_;
 
     ros::ServiceServer ss_;
 
     // == Laser stuff ==
     double max_range_;
+    double min_range_;
     int beam_step_;
 
     // maps

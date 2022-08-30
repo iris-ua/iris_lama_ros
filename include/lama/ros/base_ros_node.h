@@ -59,9 +59,9 @@ struct BaseROSNode {
     virtual ~BaseROSNode();
 
     virtual void onData(const typename MsgType::ConstPtr& data) = 0;
-    virtual void saveLog(){};
+    virtual void saveLog(double runtime){};
 
-    void runFromBag(const std::string& bagname);
+    double runFromBag(const std::string& bagname);
 
     //>> useful functions
 
@@ -106,14 +106,14 @@ BaseROSNode<MsgType>::~BaseROSNode()
 }
 
 template <typename MsgType>
-void BaseROSNode<MsgType>::runFromBag(const std::string& bagname)
+double BaseROSNode<MsgType>::runFromBag(const std::string& bagname)
 {
     rosbag::Bag bag;
 
     try { bag.open(bagname,rosbag::bagmode::Read); }
     catch (rosbag::BagException& e) {
         ROS_ERROR("%s", e.what());
-        return;
+        return 0.0;
     }// end catch
 
     std::vector<std::string> topics = {"tf", "tf_static", "/tf", "/tf_static", data_topic};
@@ -139,7 +139,8 @@ void BaseROSNode<MsgType>::runFromBag(const std::string& bagname)
     delete tf_listener;
     tf_listener = nullptr;
 
-    auto start_time = ros::WallTime::now();
+    double span = 0;
+
     for (auto& msg : view){
         if (not ros::ok()) break;
 
@@ -166,16 +167,22 @@ void BaseROSNode<MsgType>::runFromBag(const std::string& bagname)
         }// end if
 
         // process data in the queues
+        auto start_time = ros::WallTime::now();
+
         ros::getGlobalCallbackQueue()->callAvailable(ros::WallDuration());
+
+        span += (ros::WallTime::now() - start_time).toSec();
 
     }// end for
 
     bag.close();
 
-    auto time_span = (uint32_t) std::round((ros::WallTime::now() - start_time).toSec());
+    auto time_span = span; //(double) sstd::round(span);
     ROS_INFO("--------- Mapping Completed ---------");
-    ROS_INFO("Bag processed in %d minute(s) and %d second(s)", time_span / 60, time_span % 60);
+    ROS_INFO("Bag processed in %d minute(s) and %f second(s)", (int)(time_span / 60), std::fmod(time_span, 60));
     ROS_INFO("Mapping speedup is %.fX", bag_time_span / (double)(time_span));
+
+    return span;
 }
 
 template <typename MsgType>

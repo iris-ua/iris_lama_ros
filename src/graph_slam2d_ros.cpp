@@ -45,6 +45,7 @@
 #include "lama/ros/graph_slam2d_ros.h"
 #include "lama/ros/offline_replay.h"
 
+
 lama::GraphSlam2DROS::GraphSlam2DROS()
     : BaseROSNode<sensor_msgs::LaserScan>(ros::NodeHandle("~")), nh_(), pnh_("~")
 {
@@ -66,31 +67,26 @@ lama::GraphSlam2DROS::GraphSlam2DROS()
 
     pnh_.param("key_pose_distance",         options.key_pose_distance, 1.0);
     pnh_.param("key_pose_angular_distance", options.key_pose_angular_distance, 0.5 * M_PI);
+    pnh_.param("key_pose_head_delay",       options.key_pose_head_delay, 3);
 
     pnh_.param("loop_search_max_distance", options.loop_search_max_distance, 15.0);
     pnh_.param("loop_search_min_distance", options.loop_search_min_distance,  5.0);
     pnh_.param("loop_closure_scan_rmse",   options.loop_closure_scan_rmse,   0.05);
+    pnh_.param("loop_max_candidates",      options.loop_max_candidates,         5);
     pnh_.param("ignore_n_chain_poses",     options.ignore_n_chain_poses,       20);
 
-    /* pnh_.param("truncate",   options.truncated_ray, 0.0); */
-    /* pnh_.param("truncate_range",   options.truncated_range, 0.0); */
+    options.max_iter = pnh_.param("max_iterations", 100);
+    options.patch_size = pnh_.param("patch_size",  32);
 
-    /* pnh_.param("use_compression",       options.use_compression, false); */
-    /* pnh_.param("compression_algorithm", options.calgorithm, std::string("lz4")); */
-
-    int itmp;
-    pnh_.param("max_iterations", itmp, 100); options.max_iter   = itmp;
-    pnh_.param("patch_size",     itmp,  32); options.patch_size = itmp;
-    /* pnh_.param("cache_size",     itmp, 100); options.cache_size = itmp; */
-
-    pnh_.param("mrange",   max_range_, 16.0);
+    pnh_.param("mrange",    max_range_, 16.0);
+    pnh_.param("min_range", min_range_,  0.0);
     pnh_.param("beam_step", beam_step_, 1);
     beam_step_ = std::max(1, beam_step_);
-    /* pnh_.param("create_summary", options.create_summary, false); */
 
     pnh_.param("map_publish_period", tmp, 5.0 );
-    periodic_publish_ = nh_.createTimer(ros::Duration(tmp),
-                                        &GraphSlam2DROS::publishCallback, this);
+
+    if (tmp > 0.0)
+        periodic_publish_ = nh_.createTimer(ros::Duration(tmp), &GraphSlam2DROS::publishCallback, this);
 
     slam2d_ = new GraphSlam2D(options);
     slam2d_->Init(prior);
@@ -99,9 +95,9 @@ lama::GraphSlam2DROS::GraphSlam2DROS()
     pose_pub_ = nh_.advertise<geometry_msgs::PoseWithCovarianceStamped>("pose", 2);
     map_pub_  = nh_.advertise<nav_msgs::OccupancyGrid>("map",      1, true);
     dist_pub_ = nh_.advertise<nav_msgs::OccupancyGrid>("distance", 1, true);
-    kp_pub_   = nh_.advertise<visualization_msgs::MarkerArray>("keypoints", 1, true);
+    graph_pub_= nh_.advertise<visualization_msgs::MarkerArray>("graph", 1, true);
 
-    transient_map_pub_  = nh_.advertise<nav_msgs::OccupancyGrid>("transient_map",      1, true);
+    transient_map_pub_  = nh_.advertise<nav_msgs::OccupancyGrid>("transient_map", 1, true);
 
     ros_occ_.header.frame_id = global_frame;
     ros_cost_.header.frame_id = global_frame;
@@ -114,6 +110,7 @@ lama::GraphSlam2DROS::GraphSlam2DROS()
 
 lama::GraphSlam2DROS::~GraphSlam2DROS()
 {
+    delete slam2d_;
 }
 
 void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_scan)
@@ -137,7 +134,12 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
         else
             max_range = max_range_;
 
-        float min_range = laser_scan->range_min;
+        float min_range;
+        if (min_range_ == 0 || min_range_ < laser_scan->range_min)
+            min_range = laser_scan->range_min;
+        else
+            min_range = min_range_;
+
         float angle_min = laser_scan->angle_min;
         float angle_inc = laser_scan->angle_increment;
 
@@ -177,7 +179,7 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
 
         marker.header.frame_id = global_frame;
         marker.header.stamp = laser_scan->header.stamp;
-        marker.ns = "poses";
+        marker.ns = "pose";
         marker.id = 0;
         marker.type = visualization_msgs::Marker::SPHERE_LIST;
         marker.action = visualization_msgs::Marker::ADD;
@@ -205,9 +207,10 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
                 marker.colors.push_back(color);
             }// end for
         }// end if
-        markers.markers.push_back(marker);
+        if (marker.points.size() > 0)
+            markers.markers.push_back(marker);
 
-        marker.ns = "edges";
+        marker.ns = "odom";
         marker.id = 1;
         marker.type = visualization_msgs::Marker::LINE_STRIP;
         marker.scale.x = 0.05;
@@ -219,9 +222,10 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
         marker.color.a = 1;
         marker.colors.clear();
 
-        markers.markers.push_back(marker);
+        if (marker.points.size() > 0)
+            markers.markers.push_back(marker);
 
-        marker.ns = "links";
+        marker.ns = "loop";
         marker.id = 2;
         marker.type = visualization_msgs::Marker::LINE_LIST;
         marker.points.clear();
@@ -240,59 +244,11 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
             p.z = 0.0;
             marker.points.push_back(p);
         }
-        markers.markers.push_back(marker);
 
-        if (not slam2d_->links.empty()){
-            auto link = slam2d_->links.back();
-
-            marker.ns = "cloud0";
-            marker.id = 3;
-            marker.type = visualization_msgs::Marker::POINTS;
-            marker.points.clear();
-            marker.color.r = 1;
-            marker.color.g = 0;
-            marker.color.b = 1;
-
-            for (auto& point : slam2d_->key_poses[link.first].cloud->points){
-                geometry_msgs::Point p;
-                auto tp = slam2d_->key_poses[link.first].pose * point.head<2>();
-                p.x = tp.x();
-                p.y = tp.y();
-                p.z = 0.0;
-
-                marker.points.push_back(p);
-            }
-
+        if (marker.points.size() > 0)
             markers.markers.push_back(marker);
 
-        }
-
-        if (slam2d_->failure != -1){
-
-            marker.ns = "cloud-failure";
-            marker.id = 4;
-            marker.type = visualization_msgs::Marker::POINTS;
-            marker.points.clear();
-            marker.color.r = 0;
-            marker.color.g = 1;
-            marker.color.b = 1;
-
-            auto& cloud = slam2d_->key_poses[slam2d_->failure].cloud;
-            for (auto& point : cloud->points){
-                geometry_msgs::Point p;
-                auto tp = slam2d_->key_poses[slam2d_->failure].pose *
-                    ((Translation3d(cloud->sensor_origin_) * cloud->sensor_orientation_) * point).head<2>();
-                p.x = tp.x();
-                p.y = tp.y();
-                p.z = 0.0;
-
-                marker.points.push_back(p);
-            }
-        }// end if
-        markers.markers.push_back(marker);
-
-        kp_pub_.publish(markers);
-
+        graph_pub_.publish(markers);
         //====
 
         Pose2D pose = slam2d_->getPose();
@@ -303,22 +259,41 @@ void lama::GraphSlam2DROS::onData(const sensor_msgs::LaserScanConstPtr& laser_sc
         // Nothing has change, therefore, republish the last transform.
         publishTF(laser_scan->header.stamp);
     } // end if (update)
-}
-
-void lama::GraphSlam2DROS::saveLog()
-{
-    std::ofstream log("slam.log");
-
-    for (auto& node : slam2d_->key_poses){
-
-        log << lama::format("FLASER 0 0 0 0 %f %f %f %f\n",
-                node.pose.x(), node.pose.y(), node.pose.rotation(), node.timestamp);
-
-    }// end for
-
-    log.close();
 
 }
+
+/* void lama::GraphSlam2DROS::saveLog(double runtime) */
+/* { */
+
+    /* std::ofstream log("graph_slam.txt"); */
+    /* log << lama::format("# run time %f\n", runtime); */
+
+    /* for (auto& node : slam2d_->key_poses){ */
+
+    /*     auto line = lama::format("%f %f %f %f %f %f %f %f", */
+    /*             node.timestamp, node.pose.x(), node.pose.y(), 0.0, */
+    /*             0.0, 0.0, std::sin(node.pose.rotation()/2.0), std::cos(node.pose.rotation()/2.0)); */
+
+    /*     log << line << std::endl; */
+
+        /* log << lama::format("FLASER 0 0 0 0 %f %f %f %f\n", */
+        /*         node.pose.x(), node.pose.y(), node.pose.rotation(), node.timestamp); */
+
+
+        // Adjust it for Kitti
+        /* Pose3D dummy(node.pose.y(), 0.0, node.pose.x(), 0.0, node.pose.rotation(), 0.0); */
+
+        /* auto H = dummy.state.matrix(); */
+        /* auto line = lama::format("%f %f %f %f %f %f %f %f %f %f %f %f", */
+        /*         H(0,0), H(0,1), H(0,2), H(0,3), */
+        /*         H(1,0), H(1,1), H(1,2), H(1,3), */
+        /*         H(2,0), H(2,1), H(2,2), H(2,3)); */
+        /* log << line << std::endl; */
+    /* }// end for */
+
+    /* log.close(); */
+
+/* } */
 
 bool lama::GraphSlam2DROS::OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid& msg, const lama::OccupancyMap* occ)
 {
@@ -339,7 +314,7 @@ bool lama::GraphSlam2DROS::OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid&
 
     Image image;
     image.alloc(width, height, 1);
-    image.fill(50);
+    image.fill(0xff);
 
     map->visit_all_cells([&image, &map, &imin](const Vector3ui& coords){
         Vector3ui adj_coords = coords - imin;
@@ -348,8 +323,6 @@ bool lama::GraphSlam2DROS::OccupancyMsgFromOccupancyMap(nav_msgs::OccupancyGrid&
             image(adj_coords(0), adj_coords(1)) = 0;
         else if (map->isOccupied(coords))
             image(adj_coords(0), adj_coords(1)) = 100;
-        else
-            image(adj_coords(0), adj_coords(1)) = 0xff;
     });
 
     memcpy(&msg.data[0], image.data.get(), width*height);
@@ -373,7 +346,7 @@ void lama::GraphSlam2DROS::publishCallback(const ros::TimerEvent &)
     auto time = ros::Time::now();
     if ( map_pub_.getNumSubscribers() > 0 )
     {
-      OccupancyMsgFromOccupancyMap(ros_occ_, slam2d_->generateOccupancyMap().get() );
+      OccupancyMsgFromOccupancyMap(ros_occ_, slam2d_->generateOccupancyMap(true).get() );
       ros_occ_.header.stamp = time;
       map_pub_.publish(ros_occ_);
     }
@@ -391,7 +364,7 @@ bool lama::GraphSlam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::Ge
     res.map.header.frame_id = global_frame;
     res.map.header.stamp = ros::Time::now();
 
-    OccupancyMsgFromOccupancyMap(res.map, slam2d_->generateOccupancyMap().get());
+    OccupancyMsgFromOccupancyMap(res.map, slam2d_->generateOccupancyMap(true).get());
 
     return true;
 }
@@ -400,14 +373,9 @@ void lama::GraphSlam2DROS::publishMaps()
 {
     auto time = ros::Time::now();
 
-    OccupancyMsgFromOccupancyMap(ros_occ_, slam2d_->generateOccupancyMap().get());
+    OccupancyMsgFromOccupancyMap(ros_occ_, slam2d_->generateOccupancyMap(true).get());
     ros_occ_.header.stamp = time;
     map_pub_.publish(ros_occ_);
-
-}
-
-void lama::GraphSlam2DROS::printSummary()
-{
 }
 
 int main(int argc, char *argv[])
@@ -422,15 +390,14 @@ int main(int argc, char *argv[])
         ROS_INFO("Running SLAM in Live Mode");
     } else{
         ROS_INFO("Running SLAM in Rosbag Mode (offline)");
-        /* lama::ReplayRosbag(pnh, rosbag_filename); */
 
-        slam2d_ros.runFromBag(rosbag_filename);
+        auto runtime = slam2d_ros.runFromBag(rosbag_filename);
         slam2d_ros.optimizePoseGraph();
-        slam2d_ros.saveLog();
 
-        ROS_INFO("You can now save your map. Use ctrl-c to quit.");
         // publish the maps a last time
+        ROS_INFO("Generating the final map...");
         slam2d_ros.publishMaps();
+        ROS_INFO("You can now save your map. Use ctrl-c to quit.");
     }
 
     ros::spin();
