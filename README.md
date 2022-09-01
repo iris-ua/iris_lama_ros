@@ -2,7 +2,7 @@ LaMa ROS - Alternative Localization and Mapping for ROS.
 ========================================================
 https://github.com/iris-ua/iris_lama_ros
 
-![Build Melodic](https://github.com/iris-ua/iris_lama_ros/workflows/Build%20Melodic/badge.svg)
+![Build Melodic](https://github.com/iris-ua/iris_lama_ros/workflows/Build%20Latest/badge.svg)
 
 Developed and maintained by Eurico Pedrosa, University of Aveiro (C) 2019.
 
