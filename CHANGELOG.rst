@@ -2,6 +2,10 @@
 Changelog for package iris_lama_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.3.1 (2022-09-01)
+------------------
+* Add missing dependency
+
 1.3.0 (2022-09-01)
 ------------------
 * Import iris_lama as a plain cmake package
