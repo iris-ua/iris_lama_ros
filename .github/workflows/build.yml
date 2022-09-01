@@ -38,5 +38,5 @@ jobs:
         rosdep update
         rosdep install --from-paths src --ignore-src -y --rosdistro noetic
         catkin config --cmake-args -DCMAKE_BUILD_TYPE=Release
-        catkin build -j$(nproc) -l$(nproc) voxblox_ros
+        catkin build -j$(nproc) -l$(nproc) iris_lama_ros
       shell: bash
