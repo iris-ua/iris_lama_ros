@@ -2,6 +2,13 @@
 Changelog for package iris_lama_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.3.0 (2022-09-01)
+------------------
+* Import iris_lama as a plain cmake package
+* Add a new node for graph slam
+* Several improvements to the localization node
+* Add support for slam2d transient mapping
+
 1.2.0 (2021-04-10)
 ------------------
 * Remove backlash from frame ids

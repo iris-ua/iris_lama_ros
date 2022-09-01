@@ -35,8 +35,12 @@ and to create a map using *Particle Filter SLAM* execute
 ```
 rosrun iris_lama_ros pf_slam2d_ros scan_topic:=base_scan
 ```
+and to create a map using *Graph SLAM* execute
+```
+rosrun iris_lama_ros graph_slam2d_ros scan_topic:=base_scan
+```
 
-Both nodes will publish to expected topics such as `/map` and `/tf`.
+All nodes will publish to expected topics such as `/map` and `/tf`.
 
 ### Offline Mapping (rosbag)
 
@@ -91,9 +95,19 @@ Particle Filter SLAM only:
 * `~stt`: Odometry error in translation as a function of translation (default: 0.1).
 * `~srt`: Odometry error in translation as a function of rotation (default: 0.1).
 
+Graph SLAM only:
+* `~key_pose_distance`: Traveled distance to accumulate before creating a key pose (default: 1.0)
+* `~key_pose_angular`: Angular motion to accumulate before creating a key pose (default: PI/2)
+* `~key_pose_head_delay`: Number of latest key poses to ignore for head key pose reference (default: 3)
+* `~loop_search_max_distance`: Maximum distance used in the adaptive search of a loop candidate (default: 15.0)
+* `~loop_search_min_distance`: Mininum distance used in the adaptive search of a loop candidate (default: 5.0)
+* `~loop_max_candidates`: Maximum number of candidates considered for loop closure (default: 5)
+* `~ignore_n_chain_poses`: Number of the lastest key poses to ignore for loop closure  (default: 20)
+
+
 ### Services
 
-* `/dynamic_map`: 
+* `/dynamic_map`:
 
 ## Localization node
 
