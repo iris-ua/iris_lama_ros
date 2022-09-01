@@ -101,6 +101,7 @@ Graph SLAM only:
 * `~key_pose_head_delay`: Number of latest key poses to ignore for head key pose reference (default: 3)
 * `~loop_search_max_distance`: Maximum distance used in the adaptive search of a loop candidate (default: 15.0)
 * `~loop_search_min_distance`: Mininum distance used in the adaptive search of a loop candidate (default: 5.0)
+* `-loop_closure_scan_rmse`: Maximum RMSE (root mean-squared-error) allowed for a loop candidate (default: 0.05). Increase this value if loop closure links are not being created properly. A good value would be 0.1. Beware of false positives when this value too high.
 * `~loop_max_candidates`: Maximum number of candidates considered for loop closure (default: 5)
 * `~ignore_n_chain_poses`: Number of the lastest key poses to ignore for loop closure  (default: 20)
 
