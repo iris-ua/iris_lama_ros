@@ -361,6 +361,9 @@ void lama::GraphSlam2DROS::publishCallback(const ros::TimerEvent &)
 
 bool lama::GraphSlam2DROS::onGetMap(nav_msgs::GetMap::Request &req, nav_msgs::GetMap::Response &res)
 {
+    // make sure the graph is optimize
+    slam2d_->optimizePoseGraph();
+
     res.map.header.frame_id = global_frame;
     res.map.header.stamp = ros::Time::now();
 
