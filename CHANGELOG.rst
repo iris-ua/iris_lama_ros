@@ -2,7 +2,7 @@
 Changelog for package iris_lama_ros
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-1.3.2b (2022-09-09)
+1.3.3 (2022-09-09)
 ------------------
 * Trigger graph optimization when map is requested
 * Add graph slam to install list
