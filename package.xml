@@ -2,7 +2,7 @@
 <package>
 
     <name>iris_lama_ros</name>
-    <version>1.3.2</version>
+    <version>1.3.2b</version>
     <description>
         ROS package of IRIS Localization and Mapping (LaMa).
     </description>
