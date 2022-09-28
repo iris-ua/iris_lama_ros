@@ -20,10 +20,10 @@ cd src
 git clone https://github.com/iris-ua/iris_lama
 git clone https://github.com/iris-ua/iris_lama_ros
 cd ..
-catkin config --extend /opt/ros/melodic
+catkin config --extend /opt/ros/noetic
 catkin build
 ```
-The build was tested in **Ubuntu 18.04** with ROS **melodic**. It will not build with `catkin_make` or `catkin_make_isolated`.
+The build was tested in **Ubuntu 20.04** with ROS **noetic**. It will not build with `catkin_make` or `catkin_make_isolated`.
 
 ## SLAM nodes
 
