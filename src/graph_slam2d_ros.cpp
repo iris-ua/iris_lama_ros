@@ -59,19 +59,19 @@ lama::GraphSlam2DROS::GraphSlam2DROS()
     Pose2D prior(pos, tmp);
 
     GraphSlam2D::Options options;
-    pnh_.param("d_thresh",   options.trans_thresh, 0.01);
+    pnh_.param("d_thresh",   options.trans_thresh, 0.25);
     pnh_.param("a_thresh",   options.rot_thresh,   0.25);
     pnh_.param("l2_max",     options.l2_max,        0.5);
     pnh_.param("resolution", options.resolution,   0.05);
     pnh_.param("strategy",   options.strategy, std::string("gn"));
 
-    pnh_.param("key_pose_distance",         options.key_pose_distance, 1.0);
+    pnh_.param("key_pose_distance",         options.key_pose_distance, 0.5);
     pnh_.param("key_pose_angular_distance", options.key_pose_angular_distance, 0.5 * M_PI);
     pnh_.param("key_pose_head_delay",       options.key_pose_head_delay, 3);
 
     pnh_.param("loop_search_max_distance", options.loop_search_max_distance, 15.0);
     pnh_.param("loop_search_min_distance", options.loop_search_min_distance,  5.0);
-    pnh_.param("loop_closure_scan_rmse",   options.loop_closure_scan_rmse,   0.05);
+    pnh_.param("loop_closure_scan_rmse",   options.loop_closure_scan_rmse,   0.075);
     pnh_.param("loop_max_candidates",      options.loop_max_candidates,         5);
     pnh_.param("ignore_n_chain_poses",     options.ignore_n_chain_poses,       20);
 

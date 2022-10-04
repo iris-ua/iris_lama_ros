@@ -96,12 +96,13 @@ Particle Filter SLAM only:
 * `~srt`: Odometry error in translation as a function of rotation (default: 0.1).
 
 Graph SLAM only:
-* `~key_pose_distance`: Traveled distance to accumulate before creating a key pose (default: 1.0)
+* `~d_thresh`: Traveled distance to accumulate before updating (default: 0.25 meters).
+* `~key_pose_distance`: Traveled distance to accumulate before creating a key pose (default: 0.5)
 * `~key_pose_angular`: Angular motion to accumulate before creating a key pose (default: PI/2)
 * `~key_pose_head_delay`: Number of latest key poses to ignore for head key pose reference (default: 3)
 * `~loop_search_max_distance`: Maximum distance used in the adaptive search of a loop candidate (default: 15.0)
 * `~loop_search_min_distance`: Mininum distance used in the adaptive search of a loop candidate (default: 5.0)
-* `-loop_closure_scan_rmse`: Maximum RMSE (root mean-squared-error) allowed for a loop candidate (default: 0.05). Increase this value if loop closure links are not being created properly. A good value would be 0.1. Beware of false positives when this value too high.
+* `-loop_closure_scan_rmse`: Maximum RMSE (root mean-squared-error) allowed for a loop candidate (default: 0.075). Increase this value if loop closure links are not being created properly. A good value would be 0.1. Beware of false positives when this value too high.
 * `~loop_max_candidates`: Maximum number of candidates considered for loop closure (default: 5)
 * `~ignore_n_chain_poses`: Number of the lastest key poses to ignore for loop closure  (default: 20)
 
