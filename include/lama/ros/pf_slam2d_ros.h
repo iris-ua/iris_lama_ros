@@ -35,6 +35,7 @@
 
 // ROS includes
 #include "rclcpp/rclcpp.hpp"
+#include "rclcpp_components/register_node_macro.hpp"
 
 // Transform include
 #include <tf2_ros/transform_broadcaster.h>
@@ -66,8 +67,10 @@ namespace lama {
 class PFSlam2DROS {
 public:
 
-    PFSlam2DROS(std::string name);
+    PFSlam2DROS(const rclcpp::NodeOptions& node_options);
     ~PFSlam2DROS();
+
+    rclcpp::node_interfaces::NodeBaseInterface::SharedPtr get_node_base_interface() const;
 
     void onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan);
     void onGetMap(const std::shared_ptr<nav_msgs::srv::GetMap::Request> req,
@@ -141,3 +144,4 @@ private:
 
 } /* lama */
 
+RCLCPP_COMPONENTS_REGISTER_NODE(lama::PFSlam2DROS)

@@ -38,6 +38,26 @@ colcon build
 . install/setup.bash
 ```
 
+If you meet a build error, try to add `set(CMAKE_POSITION_INDEPENDENT_CODE ON)` to the top-level CMakeLists.txt of iris_lama.
+```cmake
+# install location of generated cmake config files
+set(ConfigPackageLocation ${CMAKE_INSTALL_LIBDIR}/${CMAKE_PROJECT_NAME}/cmake)
+
+# dependencies
+find_package(Eigen3 3.3 REQUIRED NO_MODULE)
+
+# ########################## Add this line ! ############################
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# #######################################################################
+
+# the code
+add_subdirectory(src)
+
+# header files, note the "/" after include
+install(DIRECTORY include/
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+```
+
 The build was tested on **Ubuntu 24.04** and **ROS2 Jazzy**.
 
 ## SLAM nodes
@@ -65,6 +85,14 @@ ros2 launch iris_lama_ros2 slam2d_offline_launch.py
 or
 ```
 ros2 launch iris_lama_ros2 pf_slam2d_offline_launch.py
+```
+
+### Composition Support
+Each node of iris_lama_ros2 can be invoked as composable. Try to launch *_launch.py with `use_composition:=true` (default: false).
+
+For example,
+```
+ros2 launch iris_lama_ros2 slam2d_live_launch.py use_composition:=true
 ```
 
 ### Parameters

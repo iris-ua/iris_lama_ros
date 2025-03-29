@@ -26,9 +26,9 @@ def generate_launch_description():
         declare_use_composition_cmd,
         Node(
             package='iris_lama_ros2',
-            namespace='iris_lama_ros2',
-            executable='slam2d_ros',
-            name='slam2d_ros',
+            namespace='',
+            executable='graph_slam2d_ros',
+            name='graph_slam2d_ros',
             #remappings=[
             #    ('/input/pose', '/turtlesim1/turtle1/pose'),
             #    ('/output/cmd_vel', '/turtlesim2/turtle1/cmd_vel')
@@ -45,9 +45,9 @@ def generate_launch_description():
             composable_node_descriptions=[
                 ComposableNode(
                     package='iris_lama_ros2',
-                    plugin='lama::Slam2DROS',
-                    name='slam2d_ros',
-                    extra_arguments=[{'use_intra_process_comms': True}],
+                    plugin='lama::GraphSlam2DROS',
+                    name='graph_slam2d_ros',
+                    extra_arguments=[{'use_intra_process_comms': False}],
                 ),
             ],
             output='screen',

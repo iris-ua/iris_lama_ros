@@ -33,9 +33,9 @@
 
 #include "lama/ros/loc2d_ros.h"
 
-lama::Loc2DROS::Loc2DROS(const std::string &name) :
+lama::Loc2DROS::Loc2DROS(const rclcpp::NodeOptions& node_options) :
         transform_tolerance_(0, 100000000) {
-    node = rclcpp::Node::make_shared(name);
+    node = rclcpp::Node::make_shared("loc2d_ros", node_options);
 
     // Load parameters from the server.
     double tmp;
@@ -115,6 +115,10 @@ lama::Loc2DROS::~Loc2DROS() {
 
 }
 
+rclcpp::node_interfaces::NodeBaseInterface::SharedPtr lama::Loc2DROS::get_node_base_interface() const {
+    return node->get_node_base_interface();
+}
+
 void lama::Loc2DROS::onInitialPose(const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr initial_pose) {
     float x = initial_pose->pose.pose.position.x;
     float y = initial_pose->pose.pose.position.y;
@@ -182,10 +186,7 @@ void lama::Loc2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr las
         for (size_t i = 0; i < size; i += beam_step) {
             double range;
 
-            if (laser_is_reversed_[laser_index])
-                range = laser_scan->ranges[size - i - 1];
-            else
-                range = laser_scan->ranges[i];
+            range = laser_scan->ranges[i];
 
             if (not std::isfinite(range))
                 continue;
@@ -320,48 +321,18 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
     }
     tf2::Stamped <tf2::Transform> laser_origin = lama_utils::createStampedTransform(msg_laser_origin);
 
-    // Validate laser orientation (code taken from slam_gmapping)
-    // create a point 1m above the laser position and transform it into the laser-frame
-    tf2::Vector3 v;
-    v.setValue(0, 0, 1 + laser_origin.getOrigin().z());
+    tf2::Matrix3x3 mat(laser_origin.getRotation());
+    tf2Scalar yaw, pitch, roll;
+    mat.getEulerYPR(yaw, pitch, roll);
 
-    geometry_msgs::msg::Vector3Stamped msg_up;
-    try {
-        geometry_msgs::msg::Vector3Stamped msg_up_baseFrame = lama_utils::createVector3Stamped(
-                v, rclcpp::Time(laser_scan->header.stamp), base_frame_id_);
-        tf_buffer_->transform(msg_up_baseFrame, msg_up, laser_scan->header.frame_id);
-        RCLCPP_DEBUG(node->get_logger(), "Z-Axis in sensor frame: %.3f", msg_up.vector.z);
-    } catch (tf2::TransformException &e) {
-        RCLCPP_ERROR(node->get_logger(), "Unable to determine orientation of laser: %s", e.what());
-        return false;
-    }
-    tf2::Stamped <tf2::Vector3> up = lama_utils::createStampedVector3(msg_up);
+    lama::Pose3D lp(
+        laser_origin.getOrigin().x(), 
+        laser_origin.getOrigin().y(), 
+        laser_origin.getOrigin().z(),
+        roll, pitch, yaw);
 
-    // we do not take roll or pitch into account. So check for correct sensor alignment.
-    if (std::fabs(std::fabs(up.z()) - 1) > 0.001) {
-        RCLCPP_WARN(node->get_logger(),
-                    "Laser has to be mounted planar! Z-coordinate has to be 1 or -1, but gave: %.5f", up.z());
-        return false;
-    }
+    lasers_origin_.push_back(lp);
 
-    double laser_origin_yaw = lama_utils::getYaw(laser_origin.getRotation());
-    if (up.z() > 0) {
-        laser_is_reversed_.push_back(laser_scan->angle_min > laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                        0, 0, laser_origin_yaw);
-
-        lasers_origin_.push_back(lp);
-        RCLCPP_INFO(node->get_logger(), "Laser is mounted upwards.");
-    } else {
-        laser_is_reversed_.push_back(laser_scan->angle_min < laser_scan->angle_max);
-
-        lama::Pose3D lp(laser_origin.getOrigin().x(), laser_origin.getOrigin().y(), 0,
-                        M_PI, 0, laser_origin_yaw);
-
-        lasers_origin_.push_back(lp);
-        RCLCPP_INFO(node->get_logger(), "Laser is mounted upside down.");
-    }
     int laser_index = (int) frame_to_laser_.size();  // simple ID generator :)
     frame_to_laser_[laser_scan->header.frame_id] = laser_index;
 
@@ -370,14 +341,4 @@ bool lama::Loc2DROS::initLaser(sensor_msgs::msg::LaserScan::ConstSharedPtr laser
 
     return true;
 
-}
-
-int main(int argc, char *argv[]) {
-    // https://github.com/ros2/examples/blob/master/rclcpp/minimal_publisher/not_composable.cpp
-
-    rclcpp::init(argc, argv);
-    lama::Loc2DROS loc2d_ros{"loc2d_ros"};
-    rclcpp::spin(loc2d_ros.node);
-    rclcpp::shutdown();
-    return 0;
 }

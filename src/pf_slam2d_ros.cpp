@@ -33,9 +33,9 @@
 
 #include "lama/ros/pf_slam2d_ros.h"
 
-lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
+lama::PFSlam2DROS::PFSlam2DROS(const rclcpp::NodeOptions& node_options) :
         transform_tolerance_(0, 100000000) {
-    node = rclcpp::Node::make_shared(name);
+    node = rclcpp::Node::make_shared("pf_slam2d_ros", node_options);
     ros_clock = node->get_clock();
 
     // Load parameters from the server.
@@ -169,6 +169,10 @@ lama::PFSlam2DROS::PFSlam2DROS(std::string name) :
 
 lama::PFSlam2DROS::~PFSlam2DROS() {
 
+}
+
+rclcpp::node_interfaces::NodeBaseInterface::SharedPtr lama::PFSlam2DROS::get_node_base_interface() const {
+    return node->get_node_base_interface();
 }
 
 void lama::PFSlam2DROS::onLaserScan(sensor_msgs::msg::LaserScan::ConstSharedPtr laser_scan) {
@@ -553,26 +557,3 @@ void lama::PFSlam2DROS::printSummary() {
     if (slam2d_->summary)
         std::cout << slam2d_->summary->report() << std::endl;
 }
-
-int main(int argc, char *argv[]) {
-    //std::cout << argc << " params: " << std::endl;
-    //for(int i=0; i<argc; ++i){
-    //    std::cout << "  " << argv[i] << std::endl;
-    //}
-
-    rclcpp::init(argc, argv);
-    lama::PFSlam2DROS slam2d_ros {"pf_slam2d_ros"};
-    slam2d_ros.node->declare_parameter("rosbag", false);
-    bool using_rosbag = slam2d_ros.node->get_parameter("rosbag").as_bool();
-    if(using_rosbag) {
-        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Rosbag Mode (offline)");
-        RCLCPP_INFO(slam2d_ros.node->get_logger(), "After the rosbag has finished, wait up to 'map_publish_period' for the map to be published. Save your map and use ctrl-c to quit.");
-    } else{
-        RCLCPP_INFO(slam2d_ros.node->get_logger(), "Running SLAM in Live Mode");
-    }
-
-    rclcpp::spin(slam2d_ros.node);
-    rclcpp::shutdown();
-    return 0;
-}
-

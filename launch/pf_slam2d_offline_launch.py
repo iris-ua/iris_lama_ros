@@ -1,7 +1,11 @@
 from launch import LaunchDescription
-from launch_ros.actions import Node
+from launch_ros.actions import Node, ComposableNodeContainer
 import launch
 import launch.actions
+from launch.conditions import IfCondition, UnlessCondition
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
+from launch_ros.descriptions import ComposableNode
 import pathlib
 
 def generate_launch_description():
@@ -12,10 +16,14 @@ def generate_launch_description():
     parameters_file_path = str(pathlib.Path(__file__).parents[1]) + '/config/offline_mode.yaml'
     print(parameters_file_path)
 
+    declare_use_composition_cmd = DeclareLaunchArgument('use_composition', default_value='false')
+    use_composition = LaunchConfiguration('use_composition')
+
     return LaunchDescription([
         #launch.actions.DeclareLaunchArgument('particles',      default_value="30", description=''),
         #launch.actions.DeclareLaunchArgument('threads',        default_value="4", description=''),
         #launch.actions.DeclareLaunchArgument('/use_sim_time',  default_value="True", description=''),
+        declare_use_composition_cmd,
         Node(
             package='iris_lama_ros2',
             namespace='iris_lama_ros2',
@@ -27,7 +35,25 @@ def generate_launch_description():
             #],
             output='screen',
             parameters=[parameters_file_path],
+            condition=UnlessCondition(use_composition)
         ), 
+        ComposableNodeContainer(
+            name='iris_lama_container', 
+            package='rclcpp_components',
+            executable='component_container',
+            namespace='',
+            composable_node_descriptions=[
+                ComposableNode(
+                    package='iris_lama_ros2',
+                    plugin='lama::PFSlam2DROS',
+                    name='pf_slam2d_ros',
+                    extra_arguments=[{'use_intra_process_comms': True}],
+                ),
+            ],
+            output='screen',
+            parameters=[parameters_file_path],
+            condition=IfCondition(use_composition)
+        ),
         launch.actions.ExecuteProcess(
             cmd=['ros2', 'bag', 'info', bag_file],
             output='screen'

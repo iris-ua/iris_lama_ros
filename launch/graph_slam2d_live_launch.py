@@ -9,11 +9,10 @@ from launch_ros.descriptions import ComposableNode
 import pathlib
 
 def generate_launch_description():
-    bag_file = '/mnt/myfolder/dev2_ws/tb3bag/'
     # https://index.ros.org/doc/ros2/Tutorials/Launch-Files/Creating-Launch-Files/
     # https://answers.ros.org/question/311456/how-to-launch-a-node-with-a-parameter-in-ros2/
     # https://answers.ros.org/question/322874/ros2-what-is-different-between-declarelaunchargument-and-launchconfiguration/
-    parameters_file_path = str(pathlib.Path(__file__).parents[1]) + '/config/offline_mode.yaml'
+    parameters_file_path = str(pathlib.Path(__file__).parents[1]) + '/config/live.yaml'
     print(parameters_file_path)
 
     declare_use_composition_cmd = DeclareLaunchArgument('use_composition', default_value='false')
@@ -26,9 +25,9 @@ def generate_launch_description():
         declare_use_composition_cmd,
         Node(
             package='iris_lama_ros2',
-            namespace='iris_lama_ros2',
-            executable='slam2d_ros',
-            name='slam2d_ros',
+            namespace='',
+            executable='graph_slam2d_ros',
+            name='graph_slam2d_ros',
             #remappings=[
             #    ('/input/pose', '/turtlesim1/turtle1/pose'),
             #    ('/output/cmd_vel', '/turtlesim2/turtle1/cmd_vel')
@@ -36,7 +35,7 @@ def generate_launch_description():
             output='screen',
             parameters=[parameters_file_path],
             condition=UnlessCondition(use_composition)
-        ), 
+        ),
         ComposableNodeContainer(
             name='iris_lama_container', 
             package='rclcpp_components',
@@ -45,21 +44,13 @@ def generate_launch_description():
             composable_node_descriptions=[
                 ComposableNode(
                     package='iris_lama_ros2',
-                    plugin='lama::Slam2DROS',
-                    name='slam2d_ros',
-                    extra_arguments=[{'use_intra_process_comms': True}],
+                    plugin='lama::GraphSlam2DROS',
+                    name='graph_slam2d_ros',
+                    extra_arguments=[{'use_intra_process_comms': False}],
                 ),
             ],
             output='screen',
             parameters=[parameters_file_path],
             condition=IfCondition(use_composition)
         ),
-        launch.actions.ExecuteProcess(
-            cmd=['ros2', 'bag', 'info', bag_file],
-            output='screen'
-        ),
-        launch.actions.ExecuteProcess(
-            cmd=['ros2', 'bag', 'play', bag_file],
-            output='screen'
-        )
     ])
